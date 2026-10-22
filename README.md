@@ -11,6 +11,9 @@ bank uses when model traffic must never touch the public internet.
 | Data-exfiltration guard | Model downloads and cloud-routed models are refused |
 | Access logging | One JSONL audit line per request (sizes and decision, never prompt bodies) |
 
+The same layout written for AWS, with offline tests and a static check, is in
+[`infra/aws`](infra/aws/README.md). It is not deployed.
+
 Models run on the host through [Ollama](https://ollama.com): `qwen3:4b` and `gemma3:4b` for chat,
 `bge-m3` for embeddings. The gateway and the check use the Python standard library only, so
 the containers install nothing.
@@ -260,8 +263,9 @@ it did see, so the person approving the memo still has to read it against the so
 Done: network isolation and the gateway (week 1); the tool boundary with execution, an audit log
 file and the document-review acceptance case, scripted and with a local model proposing the
 calls; retrieval over public law text with a measured evaluation, and a LangGraph agent that
-pauses for approval. Next: an infrastructure-as-code design for the same layout on AWS
-(Terraform, validated and statically checked, not deployed).
+pauses for approval; the same layout on AWS as Terraform, tested offline against a mock provider
+and statically checked, not deployed. Next: a review of the AWS design against the
+Well-Architected security pillar.
 
 ## How this was built
 

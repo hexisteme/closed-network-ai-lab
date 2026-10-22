@@ -41,7 +41,7 @@ commands, no network.
 
 Each criterion is a test that must pass: `docker compose --profile test run --rm lab-test` (157 tests
 on Linux in the lab image with no network, 2026-10-22). On the host, `python3 -m unittest discover -s
-tests` skips the 10 that need LangGraph.
+tests` skips the 10 that need LangGraph. A13 has its own runner, `infra/aws/check.sh`.
 
 | # | Criterion | Evidence |
 |---|---|---|
@@ -57,6 +57,7 @@ tests` skips the 10 that need LangGraph.
 | A10 | With a local model proposing the calls, the boundary holds whatever the model proposes, nothing it refused reaches the model, and a side effect runs only after a person approves its exact arguments; a declined call is not asked again. | `tests/test_review_agent.py`; `docker compose --profile agent run --rm review-agent`, with and without `PROMPT_DEFENSE=1` |
 | A11 | Retrieval stays inside the closed network and its quality is measured, not asserted: the store and the evaluator have no route out, every model call goes through the gateway, and recall@k, MRR and whether each answer cites at least one article and names only articles it was shown are written to the evidence file. | `tests/test_rag.py`; `docker compose --profile rag run --rm rag-eval` |
 | A12 | An agent built on a framework (LangGraph) keeps A2 to A4 and A10: its extra tools are decided by the same boundary, a side effect stops the graph until a person answers, only an explicit yes approves, a declined call is not asked again, and a memo does not count as done if it cites an article the agent never retrieved, cites a range, misses the article on transfers abroad, or runs past ten lines. | `tests/test_rag_agent.py`; `docker compose --profile rag-agent run --rm rag-agent` |
+| A13 | The same layout on AWS is written as code, and its claims are assertions that run offline: models only as listed and only through the VPC endpoint, no route or DNS name out beyond the endpoints and the database, nothing public, everything encrypted, only named flows between named groups, no bodies in the invocation log. Each of 27 deliberate breaks fails the run that covers it. Nothing is deployed. | `infra/aws/tests/design.tftest.hcl` through `infra/aws/check.sh`; `infra/aws/tests/break_the_design.py` |
 
 A6 does not claim the model ignores planted instructions. It claims the boundary does not care
 whether it does.
@@ -83,6 +84,11 @@ approved the memo through a pipe, and every article the memo cites was retrieved
 against the act, the memo still drops conditions in four places and leaves out one paragraph (see
 the README). The citation check proves where an article came from, not that the model read it
 correctly.
+
+A13 checks the code, not AWS. The tests read planned values from a mock provider, so they show that
+the design says what the table in `infra/aws/README.md` claims, not that AWS enforces it that way.
+trivy's built-in HIGH and CRITICAL checks caught 4 of the 27 breaks; the other 23 break rules only
+this design defines, such as which models the endpoint allows or which names DNS answers.
 
 ## Static check before deployment (weeks 3 to 5)
 
