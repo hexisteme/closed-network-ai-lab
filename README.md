@@ -65,6 +65,33 @@ The check now leaves `think` out, gives the reasoning 512 tokens to finish, and 
 answer that was truncated or contains `<think>`/`</think>`. Replayed through the new check,
 the 2026-10-17 qwen3 result fails as `answer_truncated`.
 
+## Tool boundary (groundwork for the agent)
+
+`agent/tool_boundary.py` decides each tool call a model makes before anything runs. A JSON
+schema only fixes an argument's shape: `"type": "string"` accepts `../outside.txt` just as
+readily as `notes.txt`. The boundary checks what the schema cannot express:
+
+| Check | Refuses |
+|---|---|
+| Tool list and strict schema | unknown tools, missing or extra arguments, wrong types |
+| Path confinement (`realpath`) | `../` traversal, absolute paths, symlinks leading out, a sibling such as `workspace-evil` |
+| Commands as argv, no shell | commands off the list, commands given as a path (`/bin/sh`) |
+| Per-command option list | options that carry a file: `--file=/etc/passwd`, `-f/etc/passwd` |
+| Human approval per exact arguments | side effects without approval, approval reused, withdrawn or applied to other arguments |
+
+Audit lines record the tool, the decision and the argument size, never argument values. An
+approval and the call it allowed share a random `approval_id`. `run` needs no approval because
+its list holds only commands that read (`grep`, `wc`).
+
+[docs/acceptance-case.md](docs/acceptance-case.md) applies the boundary to one workflow, a
+document-review assistant, including a reviewed document that carries planted instructions.
+Tests: `python3 -m unittest tests.test_tool_boundary tests.test_review_workflow`.
+
+Known limits: a path is checked before use, so a symlink swapped in between check and use
+(time-of-check to time-of-use) or a hard link created inside the workspace is not caught
+here; the workspace has to be a volume that holds nothing else. Every non-option command
+argument is treated as a path, so a grep pattern such as `/etc` is refused.
+
 ## Status
 
 Week 1 of a five-week build: network isolation and the gateway. Next: retrieval over public
