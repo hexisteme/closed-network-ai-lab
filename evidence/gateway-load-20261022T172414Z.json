@@ -1,0 +1,72 @@
+{
+ "kind": "gateway-load",
+ "ts": "2026-10-22T17:24:14+00:00",
+ "gateway": "http://model-gateway:8080",
+ "gateway_max_in_flight": "2",
+ "model": "qwen3:4b",
+ "num_predict": 64,
+ "requests_per_level": 16,
+ "warmup_ms": 2215,
+ "levels": [
+  {
+   "concurrency": 1,
+   "requests": 16,
+   "ok": 16,
+   "shed_503": 0,
+   "other_errors": 0,
+   "p50_ms": 2023,
+   "p95_ms": 2395,
+   "max_ms": 2395,
+   "wall_s": 33.06,
+   "ok_per_s": 0.484,
+   "output_tokens_per_s": 31.0,
+   "retry_after_seen": []
+  },
+  {
+   "concurrency": 2,
+   "requests": 16,
+   "ok": 16,
+   "shed_503": 0,
+   "other_errors": 0,
+   "p50_ms": 3844,
+   "p95_ms": 3937,
+   "max_ms": 3937,
+   "wall_s": 30.95,
+   "ok_per_s": 0.517,
+   "output_tokens_per_s": 33.1,
+   "retry_after_seen": []
+  },
+  {
+   "concurrency": 4,
+   "requests": 16,
+   "ok": 2,
+   "shed_503": 14,
+   "other_errors": 0,
+   "p50_ms": 2143,
+   "p95_ms": 4129,
+   "max_ms": 4129,
+   "wall_s": 4.13,
+   "ok_per_s": 0.484,
+   "output_tokens_per_s": 31.0,
+   "retry_after_seen": [
+    "5"
+   ]
+  },
+  {
+   "concurrency": 8,
+   "requests": 16,
+   "ok": 2,
+   "shed_503": 14,
+   "other_errors": 0,
+   "p50_ms": 2239,
+   "p95_ms": 4571,
+   "max_ms": 4571,
+   "wall_s": 4.57,
+   "ok_per_s": 0.437,
+   "output_tokens_per_s": 28.0,
+   "retry_after_seen": [
+    "5"
+   ]
+  }
+ ]
+}

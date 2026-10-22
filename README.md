@@ -10,6 +10,7 @@ bank uses when model traffic must never touch the public internet.
 | Endpoint policy | Path allowlist (`/api/chat`, `/api/embed`, read-only `/api/tags`, `/api/version`) and model allowlist |
 | Data-exfiltration guard | Model downloads and cloud-routed models are refused |
 | Access logging | One JSONL audit line per GET, POST, PUT or DELETE request (sizes and decision, never prompt bodies); other methods are answered 501 by the HTTP server before the gateway sees them, and are not logged |
+| Throttling | At most two model calls in flight; another is refused at once with 503 and `Retry-After` |
 
 The same layout written for AWS, with offline tests and a static check, is in
 [`infra/aws`](infra/aws/README.md). It is not deployed.
@@ -29,18 +30,19 @@ the owner's decisions and how the case could be wrong are in
 | Claim | Checked by | Latest result |
 |---|---|---|
 | No route out of the lab network; the gateway is the only way to the models | `egress-check` | [11 of 11 checks](evidence/egress-check-20261022T161153Z.json), with the gateway serving release r1 |
-| A1 to A6: a document-review workflow completes with one approval; every call that breaks the configured rules (tool list, schema, workspace path, command and option lists, approval) is refused with a named reason; an approval covers one call with exact arguments; audit lines carry no argument values; instructions planted in a document do not widen what the agent may do | `tests/test_review_workflow.py`, `tests/test_tool_boundary.py` | 198 tests pass on Linux in the lab image (2026-10-23) |
+| A1 to A6: a document-review workflow completes with one approval; every call that breaks the configured rules (tool list, schema, workspace path, command and option lists, approval) is refused with a named reason; an approval covers one call with exact arguments; audit lines carry no argument values; instructions planted in a document do not widen what the agent may do | `tests/test_review_workflow.py`, `tests/test_tool_boundary.py` | 238 tests pass on Linux in the lab image (2026-10-23) |
 | A7, A8: an allowed call runs as decided and nothing else; the audit log file can be checked without trusting the code that wrote it | `tests/test_tool_session.py`, `agent/audit_check.py` | as above |
 | A9: the case runs end to end in the closed lab with scripted approvals | `review-demo` | [6 steps, 40-line audit log, no violations](evidence/review-demo-20261022T060423Z-3867ed.json) |
 | A10: with qwen3:4b proposing the calls, the boundary holds whatever it proposes | `review-agent`, `tests/test_review_agent.py` | [no prompt defense](evidence/review-agent-20261022T063744Z-b34ff4.json): 9 calls refused, job not done · [one defense sentence](evidence/review-agent-20261022T063848Z-a73fbe.json): job done with one approval |
 | A11: retrieval over public law text stays inside the network and its quality is measured | `rag-eval`, `tests/test_rag.py` | [recall@5 0.958 over 24 questions](evidence/rag-eval-20261022T081909Z-06dbc0.json) |
 | A12: a LangGraph agent keeps the same boundary and pauses for approval before writing | `rag-agent`, `tests/test_rag_agent.py` | [one pause, one approval, every cited article retrieved](evidence/rag-agent-20261022T082220Z-30c48f.json) |
-| A13: the same layout on AWS is code whose claims are offline assertions | `infra/aws/check.sh`, `infra/aws/tests/break_the_design.py` | 8 of 8 test runs pass, [no trivy HIGH or CRITICAL finding](evidence/iac-check-20261022T120119Z.json), 33 of 33 deliberate breaks caught |
+| A13: the same layout on AWS is code whose claims are offline assertions | `infra/aws/check.sh`, `infra/aws/tests/break_the_design.py` | 10 of 10 test runs pass, [no trivy HIGH or CRITICAL finding](evidence/iac-check-20261022T175349Z.json), 49 of 49 deliberate breaks caught |
+| A15: model calls over the gateway's limit are refused at once and audited, instead of waiting behind the model | `gateway-load`, `tests/test_model_gateway.py` | [limit 8: one call at a time, the wait grows with concurrency](evidence/gateway-load-20261022T172209Z.json) · [limit 2: 14 of 16 calls shed at 4 and 8 at once, admitted p95 4.6 s or less](evidence/gateway-load-20261022T172414Z.json) |
 | A14: the gateway serves one versioned release of its model allowlist, and a bad release can be rolled back | `gateway/release_rehearsal.py`, `tests/test_release.py` | [r1 passes 7 checks, r2 fails the embedding check, rollback to r1 passes all 7 again; every gateway request is audited under the release served](evidence/release-rehearsal-20261022T163224Z-542a32.json) |
 
 Approvals in the A10 and A12 runs were piped by the operator; a run approved at a terminal is still
 to be done. Results without an evidence file in this repository are the author's report of runs on
-2026-10-22 and 2026-10-23: the 198 tests on Linux (10-23), the eight Terraform runs and the 33 breaks, the tool versions in
+2026-10-22 and 2026-10-23: the 238 tests on Linux (10-23), the ten Terraform runs and the 49 breaks, the tool versions in
 the network check, and the tool-calling comparison under the review agent.
 
 ## Run
@@ -85,9 +87,10 @@ cd infra/aws
 python3 -I tests/break_the_design.py
 ```
 
-`egress-check`, `review-demo`, `review-agent`, `rag-eval`, `rag-agent` and `check.sh` write their
-result to `evidence/`. The four agent and retrieval runners add a random suffix to the file name and
-refuse to overwrite a file; `egress-check` and `check.sh` name it by UTC time to the second.
+`egress-check`, `gateway-load`, `review-demo`, `review-agent`, `rag-eval`, `rag-agent` and `check.sh`
+write their result to `evidence/`. The four agent and retrieval runners add a random suffix to the
+file name and refuse to overwrite a file; `egress-check`, `gateway-load` and `check.sh` name it by
+UTC time to the second.
 `lab-test` and `break_the_design.py` print their results.
 
 ## Network isolation
@@ -131,6 +134,53 @@ The check now leaves `think` out, gives the reasoning 512 tokens to finish, and 
 answer that was truncated or contains `<think>`/`</think>`. Replayed through the new check,
 the 2026-10-17 qwen3 result fails as `answer_truncated`.
 
+## Load and overload
+
+The gateway forwards at most `MAX_IN_FLIGHT` model calls (`/api/chat`, `/api/embed`) at once, two
+by default. A call over the limit is answered at once with 503 `overloaded` and `Retry-After: 5`,
+and its audit line says `shed`. Reads and refused calls take no slot. The audit line is now
+written before the reply, so a client that hangs up mid-reply still leaves one, and a reply the
+model server cuts off mid-body becomes a 502 `upstream_incomplete` with its own audit line.
+
+`gateway-load` runs inside `lab_internal`. At each concurrency it sends the same chat call 16 times
+(qwen3:4b, 64 output tokens, temperature 0), after one uncounted call that loads the model:
+
+```
+docker compose up -d model-gateway
+docker compose run --rm gateway-load
+docker compose down
+```
+
+For another limit, set `MAX_IN_FLIGHT` on both commands. Both runs below were on 2026-10-22 UTC,
+early on 10-23 in Korea (Mac mini M4, 24 GB, Ollama 0.32.14 with its default parallelism):
+
+| Limit | Concurrency | Answered | Shed (503) | p50 | p95 | Answered per second |
+|---|---|---|---|---|---|---|
+| 8 | 1 | 16 | 0 | 2.1 s | 2.2 s | 0.48 |
+| 8 | 2 | 16 | 0 | 4.1 s | 4.3 s | 0.49 |
+| 8 | 4 | 16 | 0 | 8.2 s | 8.8 s | 0.47 |
+| 8 | 8 | 16 | 0 | 16.1 s | 17.5 s | 0.47 |
+| 2 | 1 | 16 | 0 | 2.0 s | 2.4 s | 0.48 |
+| 2 | 2 | 16 | 0 | 3.8 s | 3.9 s | 0.52 |
+| 2 | 4 | 2 | 14 | 2.1 s | 4.1 s | not comparable |
+| 2 | 8 | 2 | 14 | 2.2 s | 4.6 s | not comparable |
+
+The model answered one call at a time. Throughput stayed at about 0.48 calls, or 30 output tokens,
+per second at every level, and each further call in flight added about one call's time to the
+wait. At 2.1 s a call, the call about 140th in line would reach the gateway's 300 s upstream
+timeout; that is arithmetic, not a measurement. A limit of two keeps one call running and one
+ready, so the model does not idle between calls, and an admitted call waits for at most about one
+other. The load generator does not retry, so at 4 and 8 it used up its 16 calls within seconds;
+answered per second over those seconds is not comparable with the rows above.
+
+Limits:
+- One run per setting, one prompt, one output length, no streaming.
+- The limit is per gateway process, not per client: one client can hold both slots, and
+  embeddings share them with chat.
+- The review and RAG agents stop with `model_error` on a 503 instead of waiting `Retry-After`,
+  so an agent and an evaluation started together can stop the agent.
+- The gateway's 300 s wait for the model is still not tested.
+
 ## The tool boundary
 
 `agent/tool_boundary.py` decides each tool call a model makes before anything runs. A JSON
@@ -173,11 +223,11 @@ tool was only ever denied, and that every allowed call ran exactly once while no
 execution lacks an allow. It checks the recorded events against each other and cannot show that
 the log is complete: an action that was never logged leaves nothing to check. Run it on the log of
 a closed session; it fails on any violation and on any approval left open:
-`python3 agent/audit_check.py <log> [argument values…]`. Argument values shorter than four
-characters are not searched for, only counted. The command line knows the file tools only
-(`LAB_TOOLS`), so it checks `review-demo` and `review-agent` logs. On a `rag-agent` log it reports
-`search_law` and `read_article` lines as unexpected tools and exits 1; `rag-agent` reconciles its own
-log with its tool list (`RAG_TOOLS`) before it writes the evidence file.
+`python3 agent/audit_check.py [--tool-set lab|rag] <log> [argument values…]`. Argument values
+shorter than four characters are not searched for, only counted. The tool set must be the one that
+wrote the log: `lab` (the default, the file tools) for `review-demo` and `review-agent`, `rag` (the
+file tools plus `search_law` and `read_article`) for `rag-agent`. Checked against the wrong set, a
+`rag-agent` log reports its search and read lines as unexpected tools and exits 1.
 
 `review-demo` applies all of this to the document-review workflow, including a reviewed document
 that carries planted instructions. It runs with scripted approvals, in a container with no
@@ -347,11 +397,15 @@ production deployment and not an automated rollback.
 subnets with only the local route, DNS Firewall that answers only the names the design uses,
 Resolver query logging for the whole VPC (answers served from the resolver's cache are not logged),
 a `bedrock-runtime` interface endpoint whose policy is the model allowlist,
-Aurora PostgreSQL with pgvector, and invocation logs without bodies. `terraform test` runs eight
-assertion runs against a mock provider, so nothing is created and no credentials are needed.
-`infra/aws/tests/break_the_design.py` breaks a fresh copy of the design 33 ways, one at a time, and on
-2026-10-22 the tests caught all 33. trivy's HIGH and CRITICAL checks caught 4 of them; the other
-29 break rules only this design defines, such as which models the endpoint allows. The design was
+Aurora PostgreSQL with pgvector, invocation logs without bodies, and seven alarms on one encrypted
+topic. `terraform test` runs ten assertion runs against a mock provider, so nothing is created and
+no credentials are needed. `infra/aws/tests/break_the_design.py` breaks a fresh copy of the design
+49 ways, one at a time, and on 2026-10-23 the tests caught all 49. trivy's HIGH and CRITICAL checks
+caught 5 of them; the other 44 break rules only this design defines, such as which models the
+endpoint allows. At list prices the design would cost [186.06 USD a month before any
+use](evidence/cost-estimate-20261022T175328Z.json), almost all of it the database's minimum
+capacity and the interface endpoints; model tokens are not priced, and the infra README says why
+that figure is a floor. The design was
 reviewed against the Well-Architected security pillar and changed in `b8e66a7`. Its limits, from
 missing compute and a manual database bootstrap to the minimum TLS version, are listed in that
 README.
@@ -362,8 +416,9 @@ The [Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/lat
 has six pillars: operational excellence, security, reliability, performance efficiency, cost
 optimization and sustainability. The [Generative AI Lens](https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html)
 (published 2025-11-19) gives generative-AI best practices under each pillar. This review uses the
-lens's best practices as the checklist, for the local lab and the AWS design together. It records
-status only; nothing was changed for it. Checked 2026-10-23.
+lens's best practices as the checklist, for the local lab and the AWS design together. Checked
+2026-10-23. The review first recorded status only; alarms, the load test with overload shedding,
+the cost estimate and CI were then added for the gaps it named, and their rows say so.
 
 Status words:
 
@@ -380,12 +435,12 @@ Status words:
 |---|---|---|
 | GENOPS01-BP01 Periodically evaluate functional performance | Tested, once | `rag-eval` (A11) measured retrieval and grounding once. It is run by hand, not on a schedule, and an AI wrote the questions |
 | GENOPS01-BP02 Collect and monitor user feedback | Not addressed | |
-| GENOPS02-BP01, BP02 Monitor application layers and model metrics | Implemented, untested · IaC only · Not addressed | The gateway logs one line per request with the decision, sizes and latency; no test covers that line. The agents' audit logs are tested (A4, A8). On AWS, invocation logs, flow logs, DNS query logs and pgAudit are IaC only. No dashboard or alarm watches any of them |
-| GENOPS02-BP03 Mitigate system overload | Not addressed | The gateway accepts any number of concurrent requests and waits up to 300 s for the model |
+| GENOPS02-BP01, BP02 Monitor application layers and model metrics | Tested, in part · IaC only | The gateway logs one line per request with the decision, sizes and latency; `OverloadTest` checks the lines of a shed call and of a reply the model server cut off; other lines are not asserted. The agents' audit logs are tested (A4, A8). On AWS, invocation logs, flow logs, DNS query logs and pgAudit are IaC only, and seven alarms (IaC only, asserted by the tests) watch Bedrock throttling and errors, failed invocation-log delivery, refused DNS names and each database instance's capacity. No dashboard; nothing alerts locally |
+| GENOPS02-BP03 Mitigate system overload | Tested | The gateway forwards at most two model calls at once and refuses the rest at once with 503 and `Retry-After` (`OverloadTest`, A15). The limit is per gateway, not per client, and the agents stop on a 503 instead of retrying |
 | GENOPS03-BP01 Prompt template management | Not addressed | Prompts live in the code, versioned by git only |
 | GENOPS03-BP02 Tracing for agents and RAG workflows | Tested, tool events only · Not addressed | Each approval, decision and execution shares an `approval_id` or `call_id`, and `audit_check.py` reconciles them (A4, A8, A9). Model calls, retrieval and generation are not traced with a shared id |
-| GENOPS04-BP01 Infrastructure as code | IaC only | `infra/aws`, 8 assertion runs and 33 breaks. The local lab is `compose.yaml` |
-| GENOPS04-BP02 GenAIOps lifecycle | Not addressed | No CI. Tests, evaluations and checks are run by hand |
+| GENOPS04-BP01 Infrastructure as code | IaC only | `infra/aws`, 10 assertion runs and 49 breaks. The local lab is `compose.yaml` |
+| GENOPS04-BP02 GenAIOps lifecycle | Implemented, in part | `.github/workflows/ci.yml` runs the whole test suite in the lab image and the AWS checks with all 49 breaks on every push and pull request. Anything that needs a model (`egress-check`, the agents, `rag-eval`, `gateway-load`) still runs by hand: CI has no models |
 | GENOPS05-BP01 Learn when to customize models | Not addressed | Off-the-shelf models only; no written decision on customizing |
 
 ### Reliability ([lens](https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/reliability.html))
@@ -408,8 +463,8 @@ Status words:
 | Best practice | Status | Evidence or gap |
 |---|---|---|
 | GENPERF01-BP01 Ground-truth set of prompts and responses | Tested, retrieval labels only | `rag/eval_set.json`, 24 questions, each with the articles that answer it. There are no reference answers, so answers are checked only by their citations. AI-written, not reviewed by a lawyer |
-| GENPERF01-BP02 Collect performance metrics | Tested · Implemented, untested | Evidence files record first-call latencies, 11.9 s to embed the corpus and 177 s for 24 questions; the gateway logs latency per request. No percentiles, no trend |
-| GENPERF02-BP01 Load test model endpoints | Not addressed | |
+| GENPERF01-BP02 Collect performance metrics | Tested · Implemented, untested | Evidence files record first-call latencies, 11.9 s to embed the corpus and 177 s for 24 questions, and p50 and p95 per concurrency under load (A15); the gateway logs latency per request. No trend over time |
+| GENPERF02-BP01 Load test model endpoints | Tested, locally | `gateway-load` at 1, 2, 4 and 8 calls at once (A15): this host answers one call at a time at about 0.48 calls per second, so concurrency adds only wait. Bedrock quotas and latency were not tested |
 | GENPERF02-BP02 Optimize inference parameters | Tested, configuration only | `egress-check` leaves `think` out so the reasoning arrives apart, and fails a truncated answer (`tests/test_egress_check.py`). The agents send `think: false`, temperature 0, a 1,024-token cap and a JSON schema; RAG answers send `think: false`, temperature 0 and a 512-token cap. `test_chat_sends_one_schema_constrained_turn_without_thinking` checks the agents' request. The tests check the settings; the comparison that chose a schema over tool calling is the author's observation |
 | GENPERF02-BP03 Select the model for the use case | Not addressed | The models were chosen to fit one 24 GB host, not compared on the task |
 | GENPERF03-BP01 Managed solutions where appropriate | IaC only | Bedrock for inference, Aurora Serverless v2 for the vector store. The tests do not assert the serverless instance class or its scaling bounds |
@@ -421,13 +476,13 @@ Status words:
 | Best practice | Status | Evidence or gap |
 |---|---|---|
 | GENCOST01-BP01 Right-size model selection | Not addressed | Local calls cost nothing; no AWS model is chosen (`model_ids` has no default) |
-| GENCOST02-BP01, BP02 Inference paradigm and hosting cost | Not addressed | No inference paradigm or hosting option was chosen by comparing cost and performance. The design calls Bedrock on demand and keeps the vector store on Aurora Serverless v2 from 0.5 capacity units (not asserted by the tests); cost was not estimated |
+| GENCOST02-BP01, BP02 Inference paradigm and hosting cost | Tested, in part | `infra/aws/cost/estimate.py` prices the design from the public Price List: [186.06 USD a month fixed, 335.32 in the busy scenario](evidence/cost-estimate-20261022T175328Z.json), Bedrock tokens left as a formula because no model is chosen. Its arithmetic and its citations of the Terraform are tested (`tests/test_cost_estimate.py`, `estimate.py verify`). No alternative paradigm or hosting option was compared, and no bill checks the figures |
 | GENCOST03-BP01, BP02 Prompt and response length | Tested, in part | Response caps (`num_predict` 512 and 1,024, `num_ctx` 8,192 for RAG answers) and the memo's limit of ten nonblank lines (`test_rag_agent.py`); prompt length is not measured |
 | GENCOST03-BP03 Prompt caching | Not addressed | |
 | GENCOST03-BP04 Annotate user input for cost-aware filtering | Not addressed | |
 | GENCOST04-BP01 Reduce vector length | Not addressed | |
 | GENCOST05-BP01 Stopping conditions for long-running workflows | Tested | The 12-turn limit stops both agents; the no-defense run stopped at it (`stop: turn_limit` in its evidence) |
-| Log retention (framework cost pillar) | IaC only | Logs are kept 400 days by default and the tests require at least 365; storage cost was not estimated |
+| Log retention (framework cost pillar) | IaC only | Logs are kept 400 days by default and the tests require at least 365; once 400 days have filled, the busy scenario stores about 3.9 GB, 0.12 USD a month |
 
 ### Sustainability ([lens](https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/sustainability.html))
 
@@ -450,14 +505,15 @@ The lens's own security practices:
 | GENSEC01-BP03 Least privilege from models to data stores | Tested · IaC only | The agents reach files only through the boundary (A2, A7) and the act only through two read-only tools (A12). On AWS the IaC enables IAM database authentication and lets the agent role connect as `rag` (`rds-db:connect`); the lab's client still signs in with a password, and creating the `rag` role and the extension is a manual step listed in the infra README. Locally `rag/store.py` creates the extension as `rag`, so the local role holds more than it needs |
 | GENSEC01-BP04 Access monitoring | Implemented, untested · IaC only | Gateway request log; invocation logs and flow logs on AWS |
 | GENSEC02-BP01 Guardrails on model responses | Tested, citations only | Answers and memos that cite an article the model was not shown are counted or fail (A11, A12). No content filtering; Bedrock Guardrails are not used |
-| GENSEC03-BP01 Control-plane and data-access monitoring | IaC only | DNS query log, flow logs, pgAudit for DDL and role changes. CloudTrail is assumed at the account level, not created; nothing alerts |
+| GENSEC03-BP01 Control-plane and data-access monitoring | IaC only | DNS query log, flow logs, pgAudit for DDL and role changes, an alarm on any refused DNS name. CloudTrail is assumed at the account level, not created |
 | GENSEC04-BP01 Secure prompt catalog | Not addressed | |
 | GENSEC04-BP02 Sanitize and validate inputs | Not addressed on input | The lab constrains actions instead of filtering what the model reads: planted instructions cannot widen access (A6). Model text shown to the approver is escaped (A10) |
 | GENSEC05-BP01 Least privilege for agentic workflows | Tested | A1 to A10 and A12 |
 | GENSEC06-BP01 Data purification for training | Not applicable | No training. The corpus is the statute fetched once from the government API; the evaluation records its SHA-256 |
 
-The largest gaps for a production review are monitoring with alarms, rollback beyond the gateway
-configuration, load testing, cost estimation and a CI pipeline that reruns the checks.
+The largest gaps left for a production review are rollback beyond the gateway configuration,
+anything deployed (the alarms, the cost estimate and Bedrock's behaviour are checked in code only),
+retries that honour `Retry-After`, and CI for the checks that need a model.
 
 ## Status
 
@@ -467,10 +523,10 @@ calls; retrieval over public law text with a measured evaluation, and a LangGrap
 pauses for approval; the same layout on AWS as Terraform, tested offline against a mock provider,
 statically checked and reviewed against the Well-Architected security pillar, not deployed; the
 review above of the other five pillars and the Generative AI Lens; a versioned release of the
-gateway's model allowlist with a rehearsed rollback.
+gateway's model allowlist with a rehearsed rollback; alarms in the AWS design, a load test with
+overload shedding at the gateway, a cost estimate of the AWS design and CI.
 
-Not done: a run approved at a terminal, rollback beyond the gateway configuration, alarms, a load
-test, a cost estimate and CI.
+Not done: a run approved at a terminal, rollback beyond the gateway configuration, and any deployment.
 
 ## How this was built
 

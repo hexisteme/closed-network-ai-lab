@@ -1,0 +1,12 @@
+{"argument_bytes": 39, "call_id": "61b8efb8fe576f10", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "search_law", "ts": "2026-10-22T08:22:23.159+00:00"}
+{"call_id": "61b8efb8fe576f10", "event": "executed", "ok": true, "output_bytes": 2284, "tool": "search_law", "ts": "2026-10-22T08:22:23.287+00:00"}
+{"argument_bytes": 31, "call_id": "a9d873f23d38dc01", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_article", "ts": "2026-10-22T08:22:26.195+00:00"}
+{"call_id": "a9d873f23d38dc01", "event": "executed", "ok": true, "output_bytes": 3077, "tool": "read_article", "ts": "2026-10-22T08:22:26.197+00:00"}
+{"argument_bytes": 31, "call_id": "2572273e2e3c0791", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_article", "ts": "2026-10-22T08:22:29.629+00:00"}
+{"call_id": "2572273e2e3c0791", "event": "executed", "ok": true, "output_bytes": 1064, "tool": "read_article", "ts": "2026-10-22T08:22:29.631+00:00"}
+{"argument_bytes": 32, "call_id": "57c45058f2405da0", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_article", "ts": "2026-10-22T08:22:31.736+00:00"}
+{"call_id": "57c45058f2405da0", "event": "executed", "ok": true, "output_bytes": 328, "tool": "read_article", "ts": "2026-10-22T08:22:31.739+00:00"}
+{"argument_bytes": 1774, "call_id": "6f027b1164e7ddfa", "decision": "deny", "event": "decision", "reason": "approval_required", "tool": "write_file", "ts": "2026-10-22T08:22:41.241+00:00"}
+{"approval_id": "fd0e1dcbafeec2d1", "argument_bytes": 1774, "event": "approved", "tool": "write_file", "ts": "2026-10-22T08:22:41.247+00:00"}
+{"approval_id": "fd0e1dcbafeec2d1", "argument_bytes": 1774, "call_id": "801fc635de21125f", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "write_file", "ts": "2026-10-22T08:22:41.248+00:00"}
+{"call_id": "801fc635de21125f", "event": "executed", "ok": true, "output_bytes": 0, "tool": "write_file", "ts": "2026-10-22T08:22:41.249+00:00"}

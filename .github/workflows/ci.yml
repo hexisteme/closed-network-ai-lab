@@ -1,0 +1,62 @@
+# Every push and pull request runs the same checks as the README's commands, offline where they are
+# offline locally: the whole test suite in the lab image with no network, and the AWS design's
+# static checks with a mock provider and no AWS credentials. Nothing is deployed.
+#
+# The runners are arm64 because requirements.lock pins aarch64 Linux wheels. The one third-party
+# action is pinned by commit; Terraform and trivy are downloaded and checked against the SHA-256
+# their publishers list for these versions.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lab-tests:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The image build is the only step that downloads packages; the tests run with network_mode none.
+      - run: docker compose --profile test run --rm lab-test
+
+  aws-design:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    env:
+      TERRAFORM_VERSION: 1.16.6
+      TERRAFORM_SHA256: a750b5a11038f165846b2658c40c88cd7070aa67a61bab431a14ba27928ea9ea
+      TRIVY_VERSION: 0.75.0
+      TRIVY_SHA256: a1ee9f6ffb7d112b64ff726a2a0717c21175c1114361391f4a132956751a13b3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Terraform and trivy
+        run: |
+          set -eu
+          bin="$RUNNER_TEMP/bin"
+          mkdir -p "$bin"
+          cd "$RUNNER_TEMP"
+          curl -fsSLo terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_arm64.zip"
+          echo "${TERRAFORM_SHA256}  terraform.zip" | sha256sum -c -
+          unzip -q terraform.zip terraform -d "$bin"
+          curl -fsSLo trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-ARM64.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tar.gz" | sha256sum -c -
+          tar -xzf trivy.tar.gz -C "$bin" trivy
+          echo "$bin" >> "$GITHUB_PATH"
+      - name: fmt, validate, terraform test and trivy
+        run: infra/aws/check.sh
+      - name: Break the design one way at a time
+        working-directory: infra/aws
+        run: python3 -I tests/break_the_design.py

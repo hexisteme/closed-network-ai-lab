@@ -16,7 +16,10 @@ Reads the JSONL file a ToolSession wrote and reports every line that breaks one 
    side effects never carries one. An unlisted tool is only ever denied as not allowed.
 5. Every allowed call is executed exactly once, and nothing runs without an allow decision.
 
-    python3 agent/audit_check.py logs/audit.jsonl [argument values...]
+    python3 agent/audit_check.py [--tool-set lab|rag] logs/audit.jsonl [argument values...]
+
+The tool set is the one the session ran with: `lab` (the default, review agent and demo) or
+`rag` (the RAG agent, which adds two read-only searches).
 
 Run it on the log of a closed session: the command fails on any violation and on any approval
 left open. It checks the recorded events against each other; it cannot show that the log is
@@ -24,11 +27,11 @@ complete, since an action that was never logged leaves nothing to check. Standar
 never the values or unknown field names.
 """
 
+import argparse
 import json
 import re
-import sys
 
-from tool_boundary import LAB_TOOLS
+from tool_boundary import LAB_TOOLS, RAG_TOOLS
 from tool_session import EXECUTION_ERRORS, UNLISTED_TOOL
 
 REASONS = frozenset({
@@ -222,7 +225,15 @@ def reconcile_audit(path: str, argument_values, tools: dict = LAB_TOOLS) -> dict
     }
 
 
+TOOL_SETS = {"lab": LAB_TOOLS, "rag": RAG_TOOLS}
+
+
 if __name__ == "__main__":
-    report = reconcile_audit(sys.argv[1], sys.argv[2:])
+    parser = argparse.ArgumentParser(description="Reconcile a tool session's audit log file.")
+    parser.add_argument("--tool-set", choices=sorted(TOOL_SETS), default="lab")
+    parser.add_argument("log")
+    parser.add_argument("values", nargs="*", help="argument values that must not appear in the log")
+    args = parser.parse_args()
+    report = reconcile_audit(args.log, args.values, TOOL_SETS[args.tool_set])
     print(json.dumps(report, indent=1))
     raise SystemExit(1 if report["violations"] or report["outstanding_approvals"] else 0)

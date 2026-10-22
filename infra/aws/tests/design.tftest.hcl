@@ -23,6 +23,14 @@ mock_provider "aws" {
   mock_resource "aws_cloudwatch_log_group" {
     defaults = { arn = "arn:aws:logs:ap-northeast-2:111122223333:log-group:unexpected" }
   }
+  mock_resource "aws_sns_topic" {
+    defaults = { arn = "arn:aws:sns:ap-northeast-2:111122223333:unexpected" }
+  }
+}
+
+override_resource {
+  target = aws_sns_topic.alarms
+  values = { arn = "arn:aws:sns:ap-northeast-2:111122223333:alarms" }
 }
 
 override_resource {
@@ -267,9 +275,28 @@ run "nothing_is_public_and_everything_is_encrypted" {
             }
           }
         },
+        {
+          Sid       = "AlarmsOfThisLabPublishToTheEncryptedTopic"
+          Effect    = "Allow"
+          Principal = { Service = "cloudwatch.amazonaws.com" }
+          Action    = ["kms:GenerateDataKey*", "kms:Decrypt"]
+          Resource  = "*"
+          Condition = {
+            StringEquals = { "aws:SourceAccount" = "111122223333" }
+            ArnEquals = { "aws:SourceArn" = [
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-client-errors",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-log-delivery-failed",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-server-errors",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-throttles",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-dns-refused-names",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-db-capacity-0",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-db-capacity-1",
+            ] }
+          }
+        },
       ]
     }
-    error_message = "The lab key must rotate, and only the account and CloudWatch Logs, for these five groups, may use it."
+    error_message = "The lab key must rotate, and only the account, CloudWatch Logs for these five groups, and this lab's alarms may use it."
   }
 }
 
@@ -445,6 +472,133 @@ run "an_empty_model_list_is_refused" {
   }
 
   expect_failures = [var.model_ids]
+}
+
+run "problems_raise_an_alarm" {
+  command = apply
+
+  variables {
+    alarm_emails = ["oncall@example.com"]
+  }
+
+  assert {
+    condition = (aws_sns_topic.alarms.kms_master_key_id == "arn:aws:kms:ap-northeast-2:111122223333:key/lab"
+    && [for s in values(aws_sns_topic_subscription.alarms) : [s.protocol, s.endpoint, s.topic_arn]] == [["email", "oncall@example.com", "arn:aws:sns:ap-northeast-2:111122223333:alarms"]])
+    error_message = "The alarm topic must be encrypted with the lab key and deliver to the given addresses."
+  }
+
+  assert {
+    condition = jsondecode(aws_sns_topic_policy.alarms.policy) == {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid       = "AlarmsOfThisLabPublish"
+          Effect    = "Allow"
+          Principal = { Service = "cloudwatch.amazonaws.com" }
+          Action    = "sns:Publish"
+          Resource  = "arn:aws:sns:ap-northeast-2:111122223333:alarms"
+          Condition = {
+            StringEquals = { "aws:SourceAccount" = "111122223333" }
+            ArnEquals = { "aws:SourceArn" = [
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-client-errors",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-log-delivery-failed",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-server-errors",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-throttles",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-dns-refused-names",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-db-capacity-0",
+              "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-db-capacity-1",
+            ] }
+          }
+        },
+        {
+          Sid       = "NothingElsePublishes"
+          Effect    = "Deny"
+          Principal = "*"
+          Action    = "sns:Publish"
+          Resource  = "arn:aws:sns:ap-northeast-2:111122223333:alarms"
+          Condition = { ArnNotEquals = { "aws:SourceArn" = [
+            "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-client-errors",
+            "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-log-delivery-failed",
+            "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-server-errors",
+            "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-bedrock-throttles",
+            "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-dns-refused-names",
+            "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-db-capacity-0",
+            "arn:aws:cloudwatch:ap-northeast-2:111122223333:alarm:closed-network-ai-lab-db-capacity-1",
+          ] } }
+        },
+      ]
+    }
+    error_message = "Only the seven alarms of this lab, named one by one, may publish to the topic; anyone else is denied, identities in this account included."
+  }
+
+  assert {
+    condition = alltrue([for a in concat(values(aws_cloudwatch_metric_alarm.bedrock), [aws_cloudwatch_metric_alarm.dns_refused_names], aws_cloudwatch_metric_alarm.db_capacity) :
+    a.actions_enabled && a.alarm_actions == toset(["arn:aws:sns:ap-northeast-2:111122223333:alarms"]) && a.ok_actions == toset(["arn:aws:sns:ap-northeast-2:111122223333:alarms"])])
+    error_message = "Every alarm must notify the topic when it fires and when it clears."
+  }
+
+  assert {
+    condition = sort(concat([for a in values(aws_cloudwatch_metric_alarm.bedrock) : a.alarm_name], [aws_cloudwatch_metric_alarm.dns_refused_names.alarm_name], aws_cloudwatch_metric_alarm.db_capacity[*].alarm_name)) == tolist([
+      "closed-network-ai-lab-bedrock-client-errors",
+      "closed-network-ai-lab-bedrock-log-delivery-failed",
+      "closed-network-ai-lab-bedrock-server-errors",
+      "closed-network-ai-lab-bedrock-throttles",
+      "closed-network-ai-lab-db-capacity-0",
+      "closed-network-ai-lab-db-capacity-1",
+      "closed-network-ai-lab-dns-refused-names",
+    ])
+    error_message = "The alarms must be exactly the seven the topic and key policies name."
+  }
+
+  assert {
+    condition = (jsonencode({ for k, a in aws_cloudwatch_metric_alarm.bedrock : k => [a.namespace, a.metric_name, a.statistic, a.period, a.evaluation_periods, a.comparison_operator, a.threshold, a.treat_missing_data] }) == jsonencode({
+      throttles           = ["AWS/Bedrock", "InvocationThrottles", "Sum", 300, 1, "GreaterThanThreshold", 0, "notBreaching"]
+      server_errors       = ["AWS/Bedrock", "InvocationServerErrors", "Sum", 300, 1, "GreaterThanThreshold", 0, "notBreaching"]
+      client_errors       = ["AWS/Bedrock", "InvocationClientErrors", "Sum", 300, 1, "GreaterThanThreshold", 0, "notBreaching"]
+      log_delivery_failed = ["AWS/Bedrock", "ModelInvocationLogsCloudWatchDeliveryFailure", "Sum", 300, 1, "GreaterThanThreshold", 0, "notBreaching"]
+    }) && alltrue([for a in values(aws_cloudwatch_metric_alarm.bedrock) : try(length(a.dimensions), 0) == 0]))
+    error_message = "Bedrock throttles, server errors, client errors and failed invocation-log deliveries must each raise an alarm, counted across all models: a ModelId filter undercounts errors."
+  }
+
+  assert {
+    condition = (aws_cloudwatch_metric_alarm.dns_refused_names.namespace == "AWS/Route53Resolver"
+      && aws_cloudwatch_metric_alarm.dns_refused_names.metric_name == "FirewallRuleQueryVolume"
+      && aws_cloudwatch_metric_alarm.dns_refused_names.statistic == "Sum"
+      && aws_cloudwatch_metric_alarm.dns_refused_names.period == 300
+      && aws_cloudwatch_metric_alarm.dns_refused_names.evaluation_periods == 1
+      && aws_cloudwatch_metric_alarm.dns_refused_names.comparison_operator == "GreaterThanThreshold"
+      && aws_cloudwatch_metric_alarm.dns_refused_names.threshold == 0
+      && aws_cloudwatch_metric_alarm.dns_refused_names.dimensions == tomap({
+        FirewallRuleGroupId  = aws_route53_resolver_firewall_rule_group.lab.id
+        FirewallDomainListId = aws_route53_resolver_firewall_domain_list.everything.id
+    }))
+    error_message = "A query for any name outside the allowed list must raise an alarm."
+  }
+
+  assert {
+    condition = (length(aws_cloudwatch_metric_alarm.db_capacity) == length(aws_rds_cluster_instance.lab)
+      && alltrue([for i, a in aws_cloudwatch_metric_alarm.db_capacity : a.namespace == "AWS/RDS"
+        && a.metric_name == "ACUUtilization"
+        && a.statistic == "Maximum"
+        && a.period == 300
+        && a.comparison_operator == "GreaterThanOrEqualToThreshold"
+        && a.threshold == 90
+        && a.evaluation_periods == 3
+        && a.datapoints_to_alarm == 3
+        && a.treat_missing_data == "breaching"
+    && a.dimensions == tomap({ DBInstanceIdentifier = aws_rds_cluster_instance.lab[i].identifier })]))
+    error_message = "Each vector store instance reaching 90% or more of its capacity ceiling in each of three consecutive 5-minute periods, or silent for as long, must raise its own alarm: a cluster average hides one instance at the ceiling."
+  }
+}
+
+run "an_alarm_address_that_is_not_an_email_is_refused" {
+  command = plan
+
+  variables {
+    alarm_emails = ["oncall"]
+  }
+
+  expect_failures = [var.alarm_emails]
 }
 
 run "a_vpc_larger_than_aws_allows_is_refused" {

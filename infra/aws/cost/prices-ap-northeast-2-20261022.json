@@ -1,0 +1,766 @@
+{
+ "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json",
+ "index_publicationDate": "2026-10-22T15:42:17Z",
+ "index_sha256": "f37c3768e11cce440087c9dd353ae9cbd3223a06a6b5cce24681524a40d16734",
+ "retrieved": "2026-10-22T17:02:18Z",
+ "region": "ap-northeast-2",
+ "offers": {
+  "AWSSecretsManager": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/20260911124610/ap-northeast-2/index.json",
+   "version": "20260911124610",
+   "publicationDate": "2026-09-11T12:46:10Z",
+   "sha256": "3a9022ee26362a62762077aa95a699e40018cb052b671b7d726614a934424cd8",
+   "bytes": 2912
+  },
+  "AmazonCloudWatch": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20261007115540/ap-northeast-2/index.json",
+   "version": "20261007115540",
+   "publicationDate": "2026-10-07T11:55:40Z",
+   "sha256": "3fc8544c26354f0e01b56abb900c4828c37d297a0a08b53a7bf96ab8280544ff",
+   "bytes": 201786
+  },
+  "AmazonRDS": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20261020003232/ap-northeast-2/index.json",
+   "version": "20261020003232",
+   "publicationDate": "2026-10-20T00:32:32Z",
+   "sha256": "07165e482c83936db40a2245ec602bab6e885a0de1a24616d560929b73f7c8e5",
+   "bytes": 20783263
+  },
+  "AmazonRoute53": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260911124504/ap-northeast-2/index.json",
+   "version": "20260911124504",
+   "publicationDate": "2026-09-11T12:45:04Z",
+   "sha256": "6839289a5da11e3b0203f307a4de8969f8704e1a246a60bbaa93df291b16be21",
+   "bytes": 13811
+  },
+  "AmazonSNS": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSNS/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSNS/20260915151944/ap-northeast-2/index.json",
+   "version": "20260915151944",
+   "publicationDate": "2026-09-15T15:19:44Z",
+   "sha256": "c017d628ad1f1861b1b4e3e3b9182d177c36c8055462791cf36e6cd2fe4586cf",
+   "bytes": 51043
+  },
+  "AmazonVPC": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20261016224321/ap-northeast-2/index.json",
+   "version": "20261016224321",
+   "publicationDate": "2026-10-16T22:43:21Z",
+   "sha256": "e282b2e26ff9ee03f09319be0db2544c54973444de13af5d493a59ef038c1eb8",
+   "bytes": 80738
+  },
+  "awskms": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awskms/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awskms/20260911124601/ap-northeast-2/index.json",
+   "version": "20260911124601",
+   "publicationDate": "2026-09-11T12:46:01Z",
+   "sha256": "e9eea32ac6248555f1081deb1decb1d5c865268450e90a180d4bad191f763f93",
+   "bytes": 10254
+  }
+ },
+ "prices": {
+  "vpc_endpoint_hour": {
+   "offer": "AmazonVPC",
+   "sku": "BH2CREBM4CXH3HB5",
+   "productFamily": "VpcEndpoint",
+   "attributes": {
+    "endpointType": "PrivateLink",
+    "group": "VPCE:VpcEndpoint",
+    "groupDescription": "Hourly charge for VPC Endpoints",
+    "usagetype": "APN2-VpcEndpoint-Hours",
+    "operation": "VpcEndpoint",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "Hrs",
+   "dimensions": [
+    {
+     "rateCode": "BH2CREBM4CXH3HB5.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "Hrs",
+     "usd": "0.0130000000",
+     "description": "$0.013 per VPC Endpoint Hour"
+    }
+   ]
+  },
+  "vpc_endpoint_gb": {
+   "offer": "AmazonVPC",
+   "sku": "K4QBYWVDC6VAS9E8",
+   "productFamily": "VpcEndpoint",
+   "attributes": {
+    "endpointType": "PrivateLink",
+    "group": "VPCE:VpcEndpoint",
+    "groupDescription": "Charge for per GB data processed by VPC Endpoints",
+    "usagetype": "APN2-VpcEndpoint-Bytes",
+    "operation": "VpcEndpoint",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "GB",
+   "dimensions": [
+    {
+     "rateCode": "K4QBYWVDC6VAS9E8.JRTCKXETXF.D7RZ6WCPVW",
+     "beginRange": "0",
+     "endRange": "1048576",
+     "unit": "GB",
+     "usd": "0.0100000000",
+     "description": "$0.01 per GB for upto 1 PB monthly data processed by VPC Endpoints"
+    },
+    {
+     "rateCode": "K4QBYWVDC6VAS9E8.JRTCKXETXF.RBMR72YW69",
+     "beginRange": "1048576",
+     "endRange": "5242880",
+     "unit": "GB",
+     "usd": "0.0060000000",
+     "description": "$0.006 per GB for more than 1 PB and less than 5 PB monthly data processed by VPC Endpoints"
+    },
+    {
+     "rateCode": "K4QBYWVDC6VAS9E8.JRTCKXETXF.SW9U2ZKBYX",
+     "beginRange": "5242880",
+     "endRange": "Inf",
+     "unit": "GB",
+     "usd": "0.0040000000",
+     "description": "$0.004 per GB for more than 5 PB monthly data processed by VPC Endpoints"
+    }
+   ]
+  },
+  "aurora_acu_hour": {
+   "offer": "AmazonRDS",
+   "sku": "X6RXUNFS2M5FWJEG",
+   "productFamily": "ServerlessV2",
+   "attributes": {
+    "engineCode": "21",
+    "databaseEngine": "Aurora PostgreSQL",
+    "usagetype": "APN2-Aurora:ServerlessV2Usage",
+    "operation": "CreateDBInstance:0021",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "ACU-Hr",
+   "dimensions": [
+    {
+     "rateCode": "X6RXUNFS2M5FWJEG.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "ACU-Hr",
+     "usd": "0.2000000000",
+     "description": "USD 0.2 per Aurora Capacity Unit hour running Aurora PostgreSQL Serverless v2"
+    }
+   ]
+  },
+  "aurora_storage_gb_month": {
+   "offer": "AmazonRDS",
+   "sku": "AG84CY66WDB8RGGA",
+   "productFamily": "Database Storage",
+   "attributes": {
+    "storageMedia": "SSD",
+    "volumeType": "General Purpose-Aurora",
+    "minVolumeSize": "10 GB",
+    "maxVolumeSize": "64 TB",
+    "engineCode": "21",
+    "databaseEngine": "Aurora PostgreSQL",
+    "deploymentOption": "Single-AZ",
+    "usagetype": "APN2-Aurora:StorageUsage",
+    "operation": "CreateDBInstance:0021",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "GB-Mo",
+   "dimensions": [
+    {
+     "rateCode": "AG84CY66WDB8RGGA.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "GB-Mo",
+     "usd": "0.1200000000",
+     "description": "USD 0.120 per GB-month of consumed storage for Aurora PostgreSQL"
+    }
+   ]
+  },
+  "aurora_io_request": {
+   "offer": "AmazonRDS",
+   "sku": "MQDQ9YGYC8RGEVZB",
+   "productFamily": "System Operation",
+   "attributes": {
+    "engineCode": "21",
+    "databaseEngine": "Aurora PostgreSQL",
+    "group": "Aurora I/O Operation",
+    "groupDescription": "Input/Output Operation",
+    "usagetype": "APN2-Aurora:StorageIOUsage",
+    "operation": "CreateDBInstance:0021",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "IOs",
+   "dimensions": [
+    {
+     "rateCode": "MQDQ9YGYC8RGEVZB.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "IOs",
+     "usd": "0.0000002400",
+     "description": "USD 0.24 per 1 million I/O requests for Aurora PostgreSQL"
+    }
+   ]
+  },
+  "aurora_backup_gb_month": {
+   "offer": "AmazonRDS",
+   "sku": "PDQQMMMK7KEY57DK",
+   "productFamily": "Storage Snapshot",
+   "attributes": {
+    "storageMedia": "AmazonS3",
+    "engineCode": "21",
+    "databaseEngine": "Aurora PostgreSQL",
+    "deploymentOption": "Single-AZ",
+    "usagetype": "APN2-Aurora:BackupUsage",
+    "operation": "CreateDBInstance:0021",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "GB-Mo",
+   "dimensions": [
+    {
+     "rateCode": "PDQQMMMK7KEY57DK.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "GB-Mo",
+     "usd": "0.0230000000",
+     "description": "USD 0.023 per GB-month of backup storage exceeding free allocation for Aurora PostgreSQL"
+    }
+   ]
+  },
+  "kms_key_month": {
+   "offer": "awskms",
+   "sku": "6A8VB4MVVE4M8M69",
+   "productFamily": "Encryption Key",
+   "attributes": {
+    "usagetype": "ap-northeast-2-KMS-Keys",
+    "operation": "",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2025-07-01T00:00:00Z",
+   "unit": "Keys",
+   "dimensions": [
+    {
+     "rateCode": "6A8VB4MVVE4M8M69.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "Keys",
+     "usd": "1.0000000000",
+     "description": "$1 per customer managed KMS key version in Asia Pacific (Seoul)"
+    }
+   ]
+  },
+  "kms_request": {
+   "offer": "awskms",
+   "sku": "A3247YR2SJRYKDEX",
+   "productFamily": "API Request",
+   "attributes": {
+    "group": "awskms-APIRequest-All",
+    "groupDescription": "All AWS KMS API requests",
+    "usagetype": "ap-northeast-2-KMS-Requests",
+    "operation": "",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2025-07-01T00:00:00Z",
+   "unit": "Requests",
+   "dimensions": [
+    {
+     "rateCode": "A3247YR2SJRYKDEX.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "Requests",
+     "usd": "0.0000030000",
+     "description": "$0.03 per 10000 KMS requests in Asia Pacific (Seoul)"
+    }
+   ]
+  },
+  "secret_month": {
+   "offer": "AWSSecretsManager",
+   "sku": "8TY6BPQ52JVYCRQD",
+   "productFamily": "Secret",
+   "attributes": {
+    "group": "AWSSecretsManager-Secret",
+    "usagetype": "APN2-AWSSecretsManager-Secrets",
+    "operation": "",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2025-07-01T00:00:00Z",
+   "unit": "Secrets",
+   "dimensions": [
+    {
+     "rateCode": "8TY6BPQ52JVYCRQD.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "Secrets",
+     "usd": "0.4000000000",
+     "description": "$0.40 per Secret"
+    }
+   ]
+  },
+  "secrets_api_request": {
+   "offer": "AWSSecretsManager",
+   "sku": "9779GVGYGTKZ2UJA",
+   "productFamily": "API Request",
+   "attributes": {
+    "group": "AWSSecretsManager-APIRequest",
+    "usagetype": "APN2-AWSSecretsManagerAPIRequest",
+    "operation": "",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2025-07-01T00:00:00Z",
+   "unit": "API Requests",
+   "dimensions": [
+    {
+     "rateCode": "9779GVGYGTKZ2UJA.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "API Requests",
+     "usd": "0.0000050000",
+     "description": "$0.05 per 10000 API Requests"
+    }
+   ]
+  },
+  "dns_firewall_domain_name": {
+   "offer": "AmazonRoute53",
+   "sku": "DVB8JZJX9MJ38YDJ",
+   "productFamily": "DNS Domain Names",
+   "attributes": {
+    "description": "DNS Firewall",
+    "usagetype": "APN2-DNS-FirewallDomainName",
+    "operation": "",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-08-01T00:00:00Z",
+   "unit": "Mo",
+   "dimensions": [
+    {
+     "rateCode": "DVB8JZJX9MJ38YDJ.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "Mo",
+     "usd": "0.0005000000",
+     "description": "$0.0005 per DomainName stored within domain lists."
+    }
+   ]
+  },
+  "dns_firewall_query": {
+   "offer": "AmazonRoute53",
+   "sku": "GB3W96WP9REQ9BSD",
+   "productFamily": "DNS Query",
+   "attributes": {
+    "description": "DNS Firewall",
+    "usagetype": "APN2-DNS-FirewallQueries",
+    "operation": "",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-08-01T00:00:00Z",
+   "unit": "Queries",
+   "dimensions": [
+    {
+     "rateCode": "GB3W96WP9REQ9BSD.JRTCKXETXF.ZN357FEBCK",
+     "beginRange": "0",
+     "endRange": "1000000000",
+     "unit": "Queries",
+     "usd": "0.0000006000",
+     "description": "$0.60 per 1,000,000 queries inspected by the firewall for the first 1 Billion queries"
+    },
+    {
+     "rateCode": "GB3W96WP9REQ9BSD.JRTCKXETXF.AGD8ADSNTG",
+     "beginRange": "1000000000",
+     "endRange": "Inf",
+     "unit": "Queries",
+     "usd": "0.0000004000",
+     "description": "$0.40 per 1,000,000 queries inspected by the firewall over 1 Billion queries"
+    }
+   ]
+  },
+  "logs_ingest_standard": {
+   "offer": "AmazonCloudWatch",
+   "sku": "5P9Q77R2ADUJCNJ2",
+   "productFamily": "Data Payload",
+   "attributes": {
+    "group": "Ingested Logs",
+    "groupDescription": "Existing system, application, and custom log files",
+    "usagetype": "APN2-DataProcessing-Bytes",
+    "operation": "PutLogEvents",
+    "logsDestination": "Amazon CloudWatch Logs",
+    "regionCode": "ap-northeast-2",
+    "version": "Current"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "GB",
+   "dimensions": [
+    {
+     "rateCode": "5P9Q77R2ADUJCNJ2.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "GB",
+     "usd": "0.7600000000",
+     "description": "$0.76 per GB custom log data ingested in Standard log class - Asia Pacific (Seoul)"
+    }
+   ]
+  },
+  "logs_ingest_vended": {
+   "offer": "AmazonCloudWatch",
+   "sku": "4RVDG642Y3ZTESVR",
+   "productFamily": "Data Payload",
+   "attributes": {
+    "group": "Ingested Logs",
+    "groupDescription": "Log files generated by AWS services",
+    "usagetype": "APN2-VendedLog-Bytes",
+    "operation": "PutLogEvents",
+    "logsDestination": "Amazon CloudWatch Logs",
+    "regionCode": "ap-northeast-2",
+    "version": "Current"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "GB",
+   "dimensions": [
+    {
+     "rateCode": "4RVDG642Y3ZTESVR.JRTCKXETXF.Q3Z75P77EN",
+     "beginRange": "0",
+     "endRange": "10240",
+     "unit": "GB",
+     "usd": "0.7600000000",
+     "description": "$0.76 per GB of vended logs ingested in Standard log class for the first 10TB - Asia Pacific (Seoul)"
+    },
+    {
+     "rateCode": "4RVDG642Y3ZTESVR.JRTCKXETXF.JM86AE7V7B",
+     "beginRange": "10240",
+     "endRange": "30720",
+     "unit": "GB",
+     "usd": "0.3800000000",
+     "description": "$0.38 per GB of vended logs ingested in Standard log class for the next 20TB - Asia Pacific (Seoul)"
+    },
+    {
+     "rateCode": "4RVDG642Y3ZTESVR.JRTCKXETXF.AMET9K77J3",
+     "beginRange": "30720",
+     "endRange": "51200",
+     "unit": "GB",
+     "usd": "0.1520000000",
+     "description": "$0.152 per GB of vended logs ingested in Standard log class for the next 20TB - Asia Pacific (Seoul)"
+    },
+    {
+     "rateCode": "4RVDG642Y3ZTESVR.JRTCKXETXF.AQTKZ3QBDA",
+     "beginRange": "51200",
+     "endRange": "Inf",
+     "unit": "GB",
+     "usd": "0.0760000000",
+     "description": "$0.076 per GB of vended logs ingested in Standard log class over 50TB - Asia Pacific (Seoul)"
+    }
+   ]
+  },
+  "logs_storage": {
+   "offer": "AmazonCloudWatch",
+   "sku": "E7V5NF3GN7MQKCB6",
+   "productFamily": "Storage Snapshot",
+   "attributes": {
+    "storageMedia": "Amazon S3",
+    "group": "Amazon CloudWatch Standard Storage pricing current",
+    "groupDescription": "Amazon CloudWatch Logs Storage Current version",
+    "usagetype": "APN2-TimedStorage-ByteHrs",
+    "operation": "",
+    "regionCode": "ap-northeast-2",
+    "version": "Current"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "GB-Mo",
+   "dimensions": [
+    {
+     "rateCode": "E7V5NF3GN7MQKCB6.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "GB-Mo",
+     "usd": "0.0314000000",
+     "description": "$0.0314 per GB-mo of log storage - Asia Pacific (Seoul)"
+    }
+   ]
+  },
+  "alarm_standard": {
+   "offer": "AmazonCloudWatch",
+   "sku": "PRDBYUGVEHFG9C2J",
+   "productFamily": "Alarm",
+   "attributes": {
+    "group": "Alarm",
+    "groupDescription": "CloudWatch Alarms",
+    "usagetype": "APN2-CW:AlarmMonitorUsage",
+    "operation": "",
+    "alarmType": "Standard",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "Alarms",
+   "dimensions": [
+    {
+     "rateCode": "PRDBYUGVEHFG9C2J.JRTCKXETXF.6YS6EN2CT7",
+     "beginRange": "0",
+     "endRange": "Inf",
+     "unit": "Alarms",
+     "usd": "0.1000000000",
+     "description": "$0.10 per alarm metric month (standard resolution) - Asia Pacific (Seoul)"
+    }
+   ]
+  },
+  "sns_request": {
+   "offer": "AmazonSNS",
+   "sku": "WRZT99W8W7KV8S4U",
+   "productFamily": "API Request",
+   "attributes": {
+    "group": "SNS-Requests-Tier1",
+    "groupDescription": "Amazon SNS API Requests",
+    "usagetype": "APN2-Requests-Tier1",
+    "operation": "",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-02-01T00:00:00Z",
+   "unit": "Requests",
+   "dimensions": [
+    {
+     "rateCode": "WRZT99W8W7KV8S4U.JRTCKXETXF.SB2VSFF4TP",
+     "beginRange": "0",
+     "endRange": "1000000",
+     "unit": "Requests",
+     "usd": "0.0000000000",
+     "description": "First 1,000,000 Amazon SNS API Requests per month are free"
+    },
+    {
+     "rateCode": "WRZT99W8W7KV8S4U.JRTCKXETXF.VNJQCFJPS4",
+     "beginRange": "1000000",
+     "endRange": "Inf",
+     "unit": "Requests",
+     "usd": "0.0000005000",
+     "description": "$0.50 per 1,000,000 Amazon SNS API Requests per month thereafter"
+    }
+   ]
+  },
+  "sns_email_notification": {
+   "offer": "AmazonSNS",
+   "sku": "HZRTA3DAEB5KFQJF",
+   "productFamily": "Message Delivery",
+   "attributes": {
+    "description": "Charged for each 64KB chunk of published data",
+    "endpointType": "SMTP",
+    "usagetype": "APN2-DeliveryAttempts-SMTP",
+    "operation": "",
+    "regionCode": "ap-northeast-2"
+   },
+   "offerTermCode": "JRTCKXETXF",
+   "effectiveDate": "2026-02-01T00:00:00Z",
+   "unit": "Notifications",
+   "dimensions": [
+    {
+     "rateCode": "HZRTA3DAEB5KFQJF.JRTCKXETXF.JXGPBPHWFF",
+     "beginRange": "0",
+     "endRange": "1000",
+     "unit": "Notifications",
+     "usd": "0.0000000000",
+     "description": "First 1,000 Amazon SNS Email/Email-JSON Notifications per month are free"
+    },
+    {
+     "rateCode": "HZRTA3DAEB5KFQJF.JRTCKXETXF.MUBTP6UPGZ",
+     "beginRange": "1000",
+     "endRange": "Inf",
+     "unit": "Notifications",
+     "usd": "0.0000200000",
+     "description": "$2.00 per 100,000 Amazon SNS Email/Email-JSON Notifications thereafter"
+    }
+   ]
+  },
+  "free_alarms": {
+   "offer": "AmazonCloudWatch",
+   "sku": "FCH8WPMWVXA4B6VM",
+   "productFamily": "Bundle",
+   "attributes": {
+    "group": "CW-MonthlyFree-Alarm",
+    "groupDescription": "Monthly free usage of alarms",
+    "usagetype": "Global-CW:AlarmMonitorUsage",
+    "operation": "",
+    "regionCode": ""
+   },
+   "offerTermCode": "A429C66SYZ",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "Alarms",
+   "dimensions": [
+    {
+     "rateCode": "FCH8WPMWVXA4B6VM.A429C66SYZ.DGNP37V5JW",
+     "beginRange": "0",
+     "endRange": "10",
+     "unit": "Alarms",
+     "usd": "0.0000000000",
+     "description": "Global"
+    }
+   ]
+  },
+  "free_log_ingest": {
+   "offer": "AmazonCloudWatch",
+   "sku": "SSNSJENVU973ECHE",
+   "productFamily": "Bundle",
+   "attributes": {
+    "group": "CW-MonthlyFree-DataProcessing",
+    "groupDescription": "Monthly free usage of data ingestion",
+    "usagetype": "Global-DataProcessing-Bytes",
+    "operation": "PutLogEvents",
+    "regionCode": ""
+   },
+   "offerTermCode": "A429C66SYZ",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "GB",
+   "dimensions": [
+    {
+     "rateCode": "SSNSJENVU973ECHE.A429C66SYZ.V7GB4D473V",
+     "beginRange": "0",
+     "endRange": "5",
+     "unit": "GB",
+     "usd": "0.0000000000",
+     "description": "Global"
+    }
+   ]
+  },
+  "free_log_storage": {
+   "offer": "AmazonCloudWatch",
+   "sku": "6XTVPDAM3VF25UTA",
+   "productFamily": "Bundle",
+   "attributes": {
+    "group": "CW-MonthlyFree-Archival",
+    "groupDescription": "Monthly free usage  of archived storage",
+    "usagetype": "Global-TimedStorage-ByteHrs",
+    "operation": "",
+    "regionCode": ""
+   },
+   "offerTermCode": "A429C66SYZ",
+   "effectiveDate": "2026-10-01T00:00:00Z",
+   "unit": "GB-Mo",
+   "dimensions": [
+    {
+     "rateCode": "6XTVPDAM3VF25UTA.A429C66SYZ.V7GB4D473V",
+     "beginRange": "0",
+     "endRange": "5",
+     "unit": "GB-Mo",
+     "usd": "0.0000000000",
+     "description": "Global"
+    }
+   ]
+  },
+  "free_kms_requests": {
+   "offer": "awskms",
+   "sku": "VTFSAGP364M6QE4A",
+   "productFamily": "Bundle",
+   "attributes": {
+    "group": "awskms-Requests",
+    "groupDescription": "Monthly free usage of KMS API Requests",
+    "usagetype": "Global-KMS-Requests",
+    "operation": "",
+    "regionCode": ""
+   },
+   "offerTermCode": "A429C66SYZ",
+   "effectiveDate": "2025-07-01T00:00:00Z",
+   "unit": "Requests",
+   "dimensions": [
+    {
+     "rateCode": "VTFSAGP364M6QE4A.A429C66SYZ.7K6Z2V4Y4Q",
+     "beginRange": "0",
+     "endRange": "20000",
+     "unit": "Requests",
+     "usd": "0.0000000000",
+     "description": "$0.00 per request - Monthly Global Free Tier for KMS requests"
+    }
+   ]
+  }
+ },
+ "offers_checked_without_prices": {
+  "AmazonBedrock": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/20261016210806/ap-northeast-2/index.json",
+   "version": "20261016210806",
+   "publicationDate": "2026-10-16T21:08:06Z",
+   "sha256": "236f495e258c571f547e6abb57e95943bd6e30d2eb83228e0ab5082169098a40",
+   "bytes": 212358,
+   "products": 155,
+   "attribute_names": [
+    "feature",
+    "featureType",
+    "inferenceType",
+    "location",
+    "locationType",
+    "model",
+    "operation",
+    "policyType",
+    "provider",
+    "regionCode",
+    "service_tier",
+    "servicecode",
+    "servicename",
+    "titanModel",
+    "tokenType",
+    "usagetype"
+   ]
+  },
+  "AmazonBedrockFoundationModels": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockFoundationModels/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockFoundationModels/20261012084008/ap-northeast-2/index.json",
+   "version": "20261012084008",
+   "publicationDate": "2026-10-12T08:40:08Z",
+   "sha256": "73fb1876cf3e43d6b6425575688a33d105bcbe39cf94aec7c8fab708482baeb8",
+   "bytes": 269772,
+   "products": 195,
+   "attribute_names": [
+    "feature",
+    "inferenceType",
+    "location",
+    "locationType",
+    "model",
+    "operation",
+    "provider",
+    "regionCode",
+    "servicename",
+    "usagetype"
+   ]
+  },
+  "AmazonBedrockService": {
+   "region_index_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockService/current/region_index.json",
+   "offer_url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockService/20261014022008/ap-northeast-2/index.json",
+   "version": "20261014022008",
+   "publicationDate": "2026-10-14T02:20:08Z",
+   "sha256": "92dea13c71bb6ce54c0267bfdaaf7e60c7060d51c6c6113cc9c8dd7240b2b21c",
+   "bytes": 12656,
+   "products": 8,
+   "attribute_names": [
+    "crossRegion",
+    "feature",
+    "location",
+    "locationType",
+    "model",
+    "operation",
+    "provider",
+    "regionCode",
+    "servicecode",
+    "servicename",
+    "tokenType",
+    "usagetype"
+   ]
+  }
+ }
+}

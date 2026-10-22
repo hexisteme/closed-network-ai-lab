@@ -28,6 +28,8 @@ WAY_OUT = "no_way_out_but_the_endpoints"
 FLOWS = "only_named_flows_between_named_groups"
 INVOCATION_LOGS = "invocation_logs_carry_no_bodies"
 EMPTY_MODELS = "an_empty_model_list_is_refused"
+ALARMS = "problems_raise_an_alarm"
+ALARM_EMAILS = "an_alarm_address_that_is_not_an_email_is_refused"
 LARGE_VPC = "a_vpc_larger_than_aws_allows_is_refused"
 RESOLVER_LOG = "refused_names_leave_a_record"
 
@@ -142,10 +144,48 @@ CASES = [
     ("empty_model_list_accepted", "variables.tf", "length(var.model_ids) > 0 && ", "", EMPTY_MODELS),
     ("oversized_vpc_accepted", "variables.tf",
      'split("/", var.vpc_cidr)[1] == "16"', 'tonumber(split("/", var.vpc_cidr)[1]) <= 16', LARGE_VPC),
+    ("alarm_topic_unencrypted", "alarms.tf", "  kms_master_key_id = aws_kms_key.lab.arn\n", "", ALARMS),
+    ("alarm_topic_open_to_other_accounts", "alarms.tf",
+     '          StringEquals = { "aws:SourceAccount" = local.account_id }\n', "", ALARMS),
+    ("alarm_topic_open_to_any_alarm", "alarms.tf",
+     '          ArnEquals    = { "aws:SourceArn" = local.alarm_arns }\n', "", ALARMS),
+    ("alarm_topic_publishable_by_identities_in_the_account", "alarms.tf",
+     '      {\n        Sid       = "NothingElsePublishes"\n        Effect    = "Deny"\n        Principal = "*"\n'
+     '        Action    = "sns:Publish"\n        Resource  = aws_sns_topic.alarms.arn\n'
+     '        Condition = { ArnNotEquals = { "aws:SourceArn" = local.alarm_arns } }\n      },\n', "", ALARMS),
+    ("alarm_name_the_policies_do_not_list", "alarms.tf",
+     'alarm_name          = "${var.name}-db-capacity-${count.index}"', 'alarm_name          = "${var.name}-db-load-${count.index}"', ALARMS),
+    ("db_alarm_on_the_cluster_average", "alarms.tf",
+     "DBInstanceIdentifier = aws_rds_cluster_instance.lab[count.index].identifier",
+     "DBClusterIdentifier = aws_rds_cluster.lab.cluster_identifier", ALARMS),
+    ("alarm_actions_disabled", "alarms.tf",
+     'treat_missing_data  = "breaching"\n  actions_enabled     = true', 'treat_missing_data  = "breaching"\n  actions_enabled     = false', ALARMS),
+    ("alarm_never_reports_clearing", "alarms.tf",
+     "  ok_actions          = [aws_sns_topic.alarms.arn]\n\n  dimensions = {\n    FirewallRuleGroupId",
+     "\n  dimensions = {\n    FirewallRuleGroupId", ALARMS),
+    ("bedrock_alarm_waits_three_periods", "alarms.tf",
+     '  metric_name         = each.value\n  statistic           = "Sum"\n  period              = 300\n  evaluation_periods  = 1\n',
+     '  metric_name         = each.value\n  statistic           = "Sum"\n  period              = 300\n  evaluation_periods  = 3\n', ALARMS),
+    ("dns_alarm_counts_by_the_hour", "alarms.tf",
+     '  metric_name         = "FirewallRuleQueryVolume"\n  statistic           = "Sum"\n  period              = 300\n',
+     '  metric_name         = "FirewallRuleQueryVolume"\n  statistic           = "Sum"\n  period              = 3600\n', ALARMS),
+    ("db_alarm_on_one_minute_spikes", "alarms.tf",
+     '  statistic           = "Maximum"\n  period              = 300\n', '  statistic           = "Maximum"\n  period              = 60\n', ALARMS),
+    ("bedrock_alarms_filtered_by_model", "alarms.tf",
+     "  metric_name         = each.value\n", "  metric_name         = each.value\n  dimensions          = { ModelId = var.model_ids[0] }\n", ALARMS),
+    ("dns_alarm_on_the_allowed_list", "alarms.tf",
+     "firewall_domain_list.everything.id", "firewall_domain_list.allowed.id", ALARMS),
+    ("silent_vector_store_counts_as_fine", "alarms.tf",
+     'treat_missing_data  = "breaching"', 'treat_missing_data  = "notBreaching"', ALARMS),
+    ("key_lets_any_alarm_use_it", "main.tf",
+     '          StringEquals = { "aws:SourceAccount" = local.account_id }\n          ArnEquals    = { "aws:SourceArn" = local.alarm_arns }\n',
+     "", PUBLIC),
+    ("any_alarm_address_accepted", "variables.tf",
+     'can(regex("^[^@\\\\s]+@[^@\\\\s]+\\\\.[^@\\\\s]+$", e))', "true", ALARM_EMAILS),
 ]
 
 # In the order of tests/design.tftest.hcl.
-RUNS = [ENDPOINT, PUBLIC, WAY_OUT, FLOWS, INVOCATION_LOGS, EMPTY_MODELS, LARGE_VPC, RESOLVER_LOG]
+RUNS = [ENDPOINT, PUBLIC, WAY_OUT, FLOWS, INVOCATION_LOGS, EMPTY_MODELS, ALARMS, ALARM_EMAILS, LARGE_VPC, RESOLVER_LOG]
 
 
 def run(cmd, cwd):

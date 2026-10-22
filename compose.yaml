@@ -18,6 +18,7 @@ services:
       UPSTREAM: http://host.docker.internal:11434
       RELEASE_DIR: /releases
       AUDIT_LOG: /logs/gateway-audit.jsonl
+      MAX_IN_FLIGHT: ${MAX_IN_FLIGHT:-2}
     volumes:
       - ./gateway:/srv:ro
       - ./releases:/releases:ro
@@ -32,6 +33,23 @@ services:
       CHAT_MODELS: qwen3:4b,gemma3:4b
       EMBED_MODEL: bge-m3
       BLOCKED_MODEL: nemotron-3-nano:30b-cloud
+    volumes:
+      - ./app:/work:ro
+      - ./evidence:/evidence
+    networks: [lab_internal]
+    depends_on: [model-gateway]
+    profiles: [check]
+
+  # Load test of the gateway: the same chat call at 1, 2, 4 and 8 at a time, from lab_internal.
+  gateway-load:
+    image: python:3.12-slim
+    command: ["python", "-u", "/work/gateway_load.py"]
+    environment:
+      GATEWAY: http://model-gateway:8080
+      GATEWAY_MAX_IN_FLIGHT: ${MAX_IN_FLIGHT:-2}
+      MODEL: qwen3:4b
+      LEVELS: "1,2,4,8"
+      REQUESTS_PER_LEVEL: "16"
     volumes:
       - ./app:/work:ro
       - ./evidence:/evidence
@@ -194,6 +212,7 @@ services:
       - ./rag:/lab/rag:ro
       - ./tests:/lab/tests:ro
       - ./releases:/lab/releases:ro
+      - ./infra/aws/cost:/lab/infra/aws/cost:ro
       - ./compose.yaml:/lab/compose.yaml:ro
     network_mode: none
     profiles: [test]

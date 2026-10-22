@@ -45,7 +45,7 @@ from langgraph.types import Command, interrupt
 import retrieval
 from audit_check import reconcile_audit
 from review_agent import FINISH, NO_APPROVER, ModelError, _feedback, approver_mode, chat, parse_proposal, shown, terminal_approver
-from tool_boundary import LAB_TOOLS, ToolCall, ToolSpec, _object_schema, fingerprint_call
+from tool_boundary import RAG_TOOLS, ToolCall, fingerprint_call
 from tool_session import UNLISTED_TOOL, ToolSession
 
 MODEL = os.environ.get("MODEL", "qwen3:4b")
@@ -59,12 +59,6 @@ MEMO = "memo.md"
 # What TASK asks for: the memo answers it only if it cites the article on transfers abroad, in ten lines or fewer.
 TRANSFER_ARTICLE = "제28조의8"
 MAX_MEMO_LINES = 10
-
-RAG_TOOLS = {
-    **LAB_TOOLS,
-    "search_law": ToolSpec(_object_schema(["query"], query={"type": "string", "maxLength": 500})),
-    "read_article": ToolSpec(_object_schema(["id"], id={"type": "string", "maxLength": 20})),
-}
 
 PROPOSAL_SCHEMA = {
     "type": "object",

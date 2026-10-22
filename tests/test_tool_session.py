@@ -644,5 +644,34 @@ class ReconcileTest(SessionCase):
         self.assertTrue(any("not a JSON object" in v for v in reconcile_audit(str(self.audit_path), [])["violations"]))
 
 
+class ToolSetCommandTest(unittest.TestCase):
+    """The command checks a log against the tool set that wrote it: the review agent's or the RAG agent's."""
+
+    SCRIPT = Path(__file__).resolve().parents[1] / "agent" / "audit_check.py"
+    # A copy of the RAG agent's evidence log, so the test also runs where evidence/ is not mounted.
+    RAG_LOG = Path(__file__).resolve().parent / "fixtures" / "rag-agent-20261022T082220Z-30c48f.jsonl"
+
+    def run_check(self, *args):
+        return subprocess.run([sys.executable, str(self.SCRIPT), *args], capture_output=True, text=True)
+
+    def test_the_rag_tool_set_is_the_lab_tools_plus_two_read_only_searches(self):
+        from tool_boundary import RAG_TOOLS
+        self.assertEqual(set(RAG_TOOLS) - set(LAB_TOOLS), {"search_law", "read_article"})
+        self.assertFalse(RAG_TOOLS["search_law"].side_effect or RAG_TOOLS["read_article"].side_effect)
+
+    def test_a_rag_log_passes_with_the_rag_tool_set(self):
+        done = self.run_check("--tool-set", "rag", str(self.RAG_LOG))
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertEqual(json.loads(done.stdout)["violations"], [])
+
+    def test_a_rag_log_checked_against_the_lab_tools_names_the_unexpected_tools(self):
+        done = self.run_check(str(self.RAG_LOG))
+        self.assertEqual(done.returncode, 1)
+        self.assertTrue(all("unexpected tool" in v for v in json.loads(done.stdout)["violations"]))
+
+    def test_an_unknown_tool_set_is_refused(self):
+        self.assertEqual(self.run_check("--tool-set", "other", str(self.RAG_LOG)).returncode, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

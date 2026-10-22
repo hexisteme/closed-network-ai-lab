@@ -74,3 +74,14 @@ variable "log_retention_days" {
     error_message = "Use a CloudWatch Logs retention of one year or more."
   }
 }
+
+variable "alarm_emails" {
+  description = "Addresses the alarm topic emails. Each must confirm its subscription before it receives anything."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for e in var.alarm_emails : can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", e))])
+    error_message = "Give email addresses."
+  }
+}

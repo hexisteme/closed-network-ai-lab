@@ -21,10 +21,24 @@ credentials and no cost.
 | Services may talk only on named ports | Security groups reference each other: the agent tasks reach the endpoints on 443 and the database on 5432, and nothing else; the default group has no rules |
 
 One customer managed KMS key, with rotation on, encrypts the five log groups, the database
-storage, its master secret and Performance Insights. One of the five is the group Aurora exports
+storage, its master secret, Performance Insights and the alarm topic. One of the five is the group Aurora exports
 the PostgreSQL log to; it is created here first, so it gets the key and a retention instead of
 RDS's defaults. Every role that writes to a log group may use the key only through CloudWatch
 Logs (`kms:ViaService`). Logs are kept 400 days by default.
+
+Seven alarms notify one SNS topic when they fire and when they clear (`alarms.tf`):
+- Four on Bedrock: throttled calls, server errors, client errors, and invocation logs that failed
+  to reach CloudWatch Logs. Each is counted across all models, because AWS notes that filtering
+  these metrics by model ID undercounts errors.
+- One for any name DNS Firewall refused.
+- One per database instance that reaches 90% or more of its capacity ceiling in each of three
+  consecutive 5-minute periods. An instance that stops reporting counts as one at the ceiling.
+
+Only these seven alarms may publish to the topic: both the topic and key policies name each one,
+and the topic policy denies publishing to everyone else, identities in this account included,
+since within an account an identity policy alone could otherwise grant it. The key admits
+CloudWatch for those alarms only. `alarm_emails` subscribes addresses; each must confirm before it receives
+anything.
 
 ## Check
 
@@ -43,7 +57,7 @@ goes to `evidence/iac-check-<UTC>.json`, and any HIGH or CRITICAL finding fails 
 `terraform test` runs `tests/design.tftest.hcl` against a mock AWS provider. The mock creates
 nothing and needs no credentials; it lets the tests read the planned values. Policies are
 compared whole, so an added statement fails like a changed one, and every role, key and log group
-a policy names has its own fixed ARN in the test, so naming the wrong one fails too. The eight
+a policy names has its own fixed ARN in the test, so naming the wrong one fails too. The ten
 runs assert:
 
 - the Bedrock endpoint lets the agent role invoke the listed models and nothing else, the logs
@@ -55,7 +69,7 @@ runs assert:
   group that refuses connections without TLS, loads pgAudit for DDL and role changes next to
   `pg_stat_statements` and logs session ends, Performance Insights is on under the lab key, all
   five log groups use the lab key and keep a year or more, and the key rotates and its policy
-  admits only the account and CloudWatch Logs for those five groups;
+  admits only the account, CloudWatch Logs for those five groups and this lab's alarms;
 - every subnet uses the route table with only the local route and a network ACL that admits only
   the VPC's own range, port by port, DNS answers only the named list
   and fails closed, and flow logs go to their own group through their own role, which may write
@@ -64,22 +78,61 @@ runs assert:
   default group stays empty;
 - invocation logs carry no prompt, output, image, embedding or video, and go to their group
   through a role that may write that log stream only;
-- an empty model list and a VPC larger than AWS allows are refused;
+- each alarm above has the metric, statistic, threshold, periods and dimensions described and
+  notifies the encrypted topic when it fires and when it clears; the alarms are exactly the seven
+  the topic and key policies name, and the topic policy denies anyone else;
+- an empty model list, an alarm address that is not an email and a VPC larger than AWS allows are
+  refused;
 - every DNS query from the VPC is logged to the resolver-queries group, which only the log
   delivery service, acting for this account, may write.
 
 `tests/break_the_design.py` checks that the tests can fail. It breaks a fresh copy of the design
-33 ways, one at a time. A break counts as caught only if the copy is still valid Terraform, the
+49 ways, one at a time. A break counts as caught only if the copy is still valid Terraform, the
 run that covers it fails and the runs before it pass:
 
 ```
 python3 -I tests/break_the_design.py
 ```
 
-On 2026-10-22, all 33 breaks were caught. trivy's HIGH and CRITICAL checks caught 4 of the 33: a
-public database, an unencrypted database, a subnet handing out public addresses and a database
-rule open to any address. The other 29 break this design's own rules, such as which models the
-endpoint allows or which names DNS answers, which a general scanner has no way to know.
+On 2026-10-23, all 49 breaks were caught. trivy's HIGH and CRITICAL checks caught 5 of the 49: a
+public database, an unencrypted database, a subnet handing out public addresses, a database rule
+open to any address and an unencrypted alarm topic. The other 44 break this design's own rules,
+such as which models the endpoint allows, which names DNS answers or which alarm watches what,
+which a general scanner has no way to know.
+
+## Cost
+
+`cost/estimate.py` prices the design offline from the Terraform and a snapshot of the public AWS
+Price List for Seoul (`cost/prices-ap-northeast-2-20261022.json`, written by `cost/snapshot.py`,
+which needs no account). `cost/quantities.json` names what is billed, with the line of Terraform
+that creates each item and the assumption behind each usage figure; `verify` fails if a cited
+line, or the number of alarms or topics, no longer matches the `.tf` files.
+
+```
+python3 -I cost/estimate.py verify
+python3 -I cost/estimate.py
+```
+
+[The 2026-10-23 run](../../evidence/cost-estimate-20261022T175328Z.json), on-demand list prices in
+USD for a 730-hour month, before tax, credits and the account-wide free tiers:
+
+| | USD a month |
+|---|---|
+| Fixed, billed whether or not anything runs: two Aurora instances at their 0.5 ACU minimum (146.00), two interface endpoints in two zones (37.96), the key (1.00), the master secret (0.40), seven alarms (0.70), DNS Firewall domain names (0.0025) | 186.06 |
+| Idle: deployed, no agent run | 186.18 |
+| Pilot: about ten people starting about ten agent runs each a working day, 20 days | 186.50 |
+| Busy: ten times the pilot, each database instance averaging twice its minimum | 335.32 |
+
+Bedrock tokens are not priced: `model_ids` has no default, and the Price List names models, not
+the model IDs the Terraform takes. Each scenario records its token counts (the pilot: about 98
+million input and 12 million output), to be multiplied by the chosen model's rates. Compute, the
+ECR and S3 endpoints that running tasks would need, and traffic between zones are not in the
+design and not priced.
+
+The fixed figure is a floor. AWS recommends a minimum of 2 ACUs per instance with Performance
+Insights on, which would make it 624.06; and it lists Performance Insights, CloudWatch Logs export
+and pgAudit, all three on here, among the features that can keep an idle instance above its
+minimum. The minimum stays 0.5 in the code.
 
 ## Limits
 
@@ -128,10 +181,14 @@ endpoint allows or which names DNS answers, which a general scanner has no way t
   and `kms:CreateGrant` on the lab key for RDS to keep the master password under it (Aurora user
   guide, Secrets Manager integration). The key policy's account statement lets IAM grant these;
   the deploying identity's policy is not part of this design.
-- Nothing alerts. DNS Firewall publishes blocked-query counts to CloudWatch
-  (`FirewallRuleQueryVolume` per domain list) and flow logs record rejects, but no alarm watches
-  them. CloudTrail, GuardDuty and CloudTrail network activity events (which record requests a
-  VPC endpoint policy denied) are assumed at the account level, not created here.
+- No alarm has fired and no email has been sent: nothing is deployed. The thresholds are first
+  settings, not tuned against traffic. Any refused name raises the DNS alarm, a misconfigured
+  allowlist included. Rejected flows in the flow log have no alarm (that needs a metric filter).
+  The emails carry the alarm name, metric and threshold, not log contents. The topic refuses
+  every other publisher, so a test message published from the console is refused too;
+  `aws cloudwatch set-alarm-state` on one alarm is the way to test delivery. CloudTrail, GuardDuty
+  and CloudTrail network activity events (which record requests a VPC endpoint policy denied) are
+  assumed at the account level, not created here.
 - Bedrock invocation logging is one setting per account and Region. Applied in a shared account,
   this replaces whatever is there: deploy into a dedicated account, or check
   `GetModelInvocationLoggingConfiguration` first.
@@ -152,7 +209,7 @@ endpoint allows or which names DNS answers, which a general scanner has no way t
   database during an incident.
 - Bedrock Guardrails are not used. The lab asks a person before a tool has side effects; that
   does not filter what the model reads or writes, and the agent that asks is out of scope here.
-- Two Availability Zones by default, one database instance in each. Cost was not estimated.
+- Two Availability Zones by default, one database instance in each.
 
 ## Sources
 
@@ -179,6 +236,20 @@ Checked 2026-10-22.
   <https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html>
 - pgvector versions in Aurora PostgreSQL 17.11:
   <https://docs.aws.amazon.com/AmazonRDS/latest/AuroraPostgreSQLReleaseNotes/AuroraPostgreSQL.Extensions.html>
+
+Checked 2026-10-23.
+
+- Bedrock runtime metrics, and filtering by model ID undercounting errors:
+  <https://docs.aws.amazon.com/bedrock/latest/userguide/monitoring-runtime-metrics.html>
+- DNS Firewall metrics (`FirewallRuleQueryVolume` per rule group and domain list):
+  <https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/monitoring-resolver-dns-firewall-with-cloudwatch.html>
+- `ACUUtilization` per Aurora Serverless v2 instance, the 2 ACU minimum recommended with
+  Performance Insights, and the features that can keep an instance above its minimum:
+  <https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.setting-capacity.html>
+- Prices: the AWS Price List bulk API, offer files dated in the snapshot's `offers`:
+  <https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/using-the-aws-price-list-bulk-api.html>
+- The key policy CloudWatch alarms need to publish to an encrypted topic:
+  <https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html>
 
 ## How this was built
 

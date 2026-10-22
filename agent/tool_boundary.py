@@ -77,6 +77,13 @@ LAB_TOOLS = {
     ),
 }
 
+# The RAG agent (rag_agent.py) adds two read-only searches over the statute to the lab tools.
+RAG_TOOLS = {
+    **LAB_TOOLS,
+    "search_law": ToolSpec(_object_schema(["query"], query={"type": "string", "maxLength": 500})),
+    "read_article": ToolSpec(_object_schema(["id"], id={"type": "string", "maxLength": 20})),
+}
+
 
 def _encodable(value: str) -> bool:
     # A lone surrogate cannot be written to a file or passed to a program.

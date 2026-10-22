@@ -4,6 +4,21 @@ locals {
 
   model_arns = [for id in var.model_ids : "arn:${local.partition}:bedrock:${var.region}::foundation-model/${id}"]
 
+  # What each Bedrock alarm counts, and every alarm's name, fixed here so that the topic and key
+  # policies name each alarm rather than a prefix any later alarm could share.
+  bedrock_alarm_metrics = {
+    throttles           = "InvocationThrottles"
+    server_errors       = "InvocationServerErrors"
+    client_errors       = "InvocationClientErrors"
+    log_delivery_failed = "ModelInvocationLogsCloudWatchDeliveryFailure"
+  }
+  alarm_names = concat(
+    [for key in keys(local.bedrock_alarm_metrics) : "${var.name}-bedrock-${replace(key, "_", "-")}"],
+    ["${var.name}-dns-refused-names"],
+    [for i in range(length(var.availability_zones)) : "${var.name}-db-capacity-${i}"],
+  )
+  alarm_arns = [for name in local.alarm_names : "arn:${local.partition}:cloudwatch:${var.region}:${local.account_id}:alarm:${name}"]
+
   # The postgresql group is the one Aurora exports to. It is created here first so that it gets
   # the lab key and a retention instead of the defaults RDS would give it.
   log_groups = {
@@ -28,7 +43,7 @@ locals {
 
 # One customer managed key for the logs, the database and its managed master secret.
 resource "aws_kms_key" "lab" {
-  description             = "${var.name}: logs, database storage, database master secret"
+  description             = "${var.name}: logs, database storage, database master secret, alarm topic"
   enable_key_rotation     = true
   deletion_window_in_days = 30
 
@@ -54,6 +69,17 @@ resource "aws_kms_key" "lab" {
               for group in values(local.log_groups) : "arn:${local.partition}:logs:${var.region}:${local.account_id}:log-group:${group}"
             ]
           }
+        }
+      },
+      {
+        Sid       = "AlarmsOfThisLabPublishToTheEncryptedTopic"
+        Effect    = "Allow"
+        Principal = { Service = "cloudwatch.amazonaws.com" }
+        Action    = ["kms:GenerateDataKey*", "kms:Decrypt"]
+        Resource  = "*"
+        Condition = {
+          StringEquals = { "aws:SourceAccount" = local.account_id }
+          ArnEquals    = { "aws:SourceArn" = local.alarm_arns }
         }
       },
     ]

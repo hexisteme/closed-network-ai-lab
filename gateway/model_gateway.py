@@ -3,19 +3,25 @@
 It plays the role a VPC endpoint plus endpoint policy plays in a cloud deployment:
 requests pass only if both the API path and the model are on an allowlist, cloud-routed
 models are refused outright, and every request leaves one audit line (sizes, never bodies).
+Model calls over MAX_IN_FLIGHT are refused at once with 503 and Retry-After instead of waiting
+behind the model, so an overloaded model answers "try later" rather than nothing for minutes.
 Standard library only, so the container needs no package installs.
 """
 
 import json
 import os
+import threading
 import time
 from datetime import datetime, timezone
+from http.client import HTTPException
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
 READ_PATHS = frozenset({"/api/tags", "/api/version"})
 MODEL_PATHS = frozenset({"/api/chat", "/api/embed"})
+DEFAULT_MAX_IN_FLIGHT = 2
+RETRY_AFTER_SECONDS = 5
 
 
 def normalize_model(name: str) -> str:
@@ -25,6 +31,16 @@ def normalize_model(name: str) -> str:
 
 def parse_allowlist(raw: str) -> frozenset:
     return frozenset(normalize_model(part) for part in raw.split(",") if part.strip())
+
+
+def parse_max_in_flight(raw) -> int:
+    """The number of model calls the gateway forwards at once; blank means the default."""
+    if raw is None or not raw.strip():
+        return DEFAULT_MAX_IN_FLIGHT
+    value = int(raw)
+    if value < 1:
+        raise ValueError(f"MAX_IN_FLIGHT must be 1 or more, got {raw!r}")
+    return value
 
 
 def is_cloud_model(model: str) -> bool:
@@ -86,6 +102,7 @@ class GatewayEndpoint(BaseHTTPRequestHandler):
     allowed_models = frozenset()
     release_id = None
     audit_path = "/logs/gateway-audit.jsonl"
+    model_slots = threading.BoundedSemaphore(DEFAULT_MAX_IN_FLIGHT)
 
     def do_GET(self):
         self._relay("GET")
@@ -109,32 +126,44 @@ class GatewayEndpoint(BaseHTTPRequestHandler):
         body = self.rfile.read(length) if length else b""
         path = self.path.split("?", 1)[0]
         allowed, reason, model = evaluate_request(method, path, body, self.allowed_models)
-        if allowed:
+        decision = "allow" if allowed else "deny"
+        if not allowed:
+            status, data = 403, json.dumps({"error": reason}).encode()
+        elif path not in MODEL_PATHS:
             status, data = self._forward(method, path, body)
             if path == "/api/tags" and status == 200:
                 data = filter_tags(data, self.allowed_models)
+        elif self.model_slots.acquire(blocking=False):
+            try:
+                status, data = self._forward(method, path, body)
+            finally:
+                self.model_slots.release()
         else:
-            status, data = 403, json.dumps({"error": reason}).encode()
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        if self.release_id:
-            self.send_header("X-Lab-Release", self.release_id)
-        self.end_headers()
-        self.wfile.write(data)
+            decision, reason = "shed", "overloaded"
+            status, data = 503, json.dumps({"error": reason}).encode()
+        # The audit line is written before the reply, so a client that hangs up mid-reply still leaves one.
         append_audit(self.audit_path, {
             "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "release": self.release_id,
             "method": method,
             "path": path,
             "model": model,
-            "decision": "allow" if allowed else "deny",
+            "decision": decision,
             "reason": reason,
             "status": status,
             "request_bytes": len(body),
             "response_bytes": len(data),
             "latency_ms": round((time.monotonic() - started) * 1000),
         })
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        if decision == "shed":
+            self.send_header("Retry-After", str(RETRY_AFTER_SECONDS))
+        if self.release_id:
+            self.send_header("X-Lab-Release", self.release_id)
+        self.end_headers()
+        self.wfile.write(data)
 
     def _forward(self, method: str, path: str, body: bytes):
         req = urlrequest.Request(
@@ -144,10 +173,14 @@ class GatewayEndpoint(BaseHTTPRequestHandler):
             headers={"Content-Type": "application/json"},
         )
         try:
-            with urlrequest.urlopen(req, timeout=300) as resp:
-                return resp.status, resp.read()
-        except urlerror.HTTPError as exc:
-            return exc.code, exc.read()
+            try:
+                with urlrequest.urlopen(req, timeout=300) as resp:
+                    return resp.status, resp.read()
+            except urlerror.HTTPError as exc:
+                return exc.code, exc.read()
+        except HTTPException as exc:
+            # A reply cut off mid-body (IncompleteRead) is not an OSError; without this it would skip the audit line.
+            return 502, json.dumps({"error": "upstream_incomplete", "detail": type(exc).__name__}).encode()
         except (urlerror.URLError, TimeoutError, OSError) as exc:
             detail = str(getattr(exc, "reason", exc))
             return 502, json.dumps({"error": "upstream_unreachable", "detail": detail}).encode()
@@ -157,9 +190,11 @@ def main() -> None:
     GatewayEndpoint.upstream = os.environ.get("UPSTREAM", GatewayEndpoint.upstream).rstrip("/")
     GatewayEndpoint.release_id, GatewayEndpoint.allowed_models = load_gateway_policy(os.environ)
     GatewayEndpoint.audit_path = os.environ.get("AUDIT_LOG", GatewayEndpoint.audit_path)
+    max_in_flight = parse_max_in_flight(os.environ.get("MAX_IN_FLIGHT"))
+    GatewayEndpoint.model_slots = threading.BoundedSemaphore(max_in_flight)
     port = int(os.environ.get("PORT", "8080"))
     print(f"model-gateway on :{port} -> {GatewayEndpoint.upstream} release={GatewayEndpoint.release_id} "
-          f"allow={sorted(GatewayEndpoint.allowed_models)}", flush=True)
+          f"allow={sorted(GatewayEndpoint.allowed_models)} max_in_flight={max_in_flight}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), GatewayEndpoint).serve_forever()
 
 
