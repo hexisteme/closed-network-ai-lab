@@ -29,6 +29,7 @@ FLOWS = "only_named_flows_between_named_groups"
 INVOCATION_LOGS = "invocation_logs_carry_no_bodies"
 EMPTY_MODELS = "an_empty_model_list_is_refused"
 LARGE_VPC = "a_vpc_larger_than_aws_allows_is_refused"
+RESOLVER_LOG = "refused_names_leave_a_record"
 
 DB_FROM_APP = """  description                  = "PostgreSQL from the agent tasks"
   ip_protocol                  = "tcp"
@@ -96,6 +97,9 @@ CASES = [
     ("exported_db_logs_left_to_rds", "main.tf",
      '    postgresql  = "/aws/rds/cluster/${var.name}/postgresql"\n', "", PUBLIC),
     ("route_out_through_an_internet_gateway", "network.tf", ROUTE_TABLE, ROUTE_OUT, WAY_OUT),
+    ("network_acl_open_to_anywhere", "network.tf",
+     "    rule_no    = 100\n    protocol   = \"tcp\"\n    action     = \"allow\"\n    cidr_block = var.vpc_cidr\n    from_port  = 443\n    to_port    = 443\n  }\n\n  ingress {",
+     "    rule_no    = 100\n    protocol   = \"tcp\"\n    action     = \"allow\"\n    cidr_block = \"0.0.0.0/0\"\n    from_port  = 443\n    to_port    = 443\n  }\n\n  ingress {", WAY_OUT),
     ("dns_answers_every_name", "dns.tf", 'action                  = "BLOCK"', 'action                  = "ALLOW"', WAY_OUT),
     ("dns_answers_any_aws_name", "dns.tf",
      '"logs.${var.region}.amazonaws.com",', '"logs.${var.region}.amazonaws.com",\n    "*.amazonaws.com",', WAY_OUT),
@@ -125,13 +129,23 @@ CASES = [
     ("logs_endpoint_without_private_dns", "endpoints.tf",
      'service_name        = "com.amazonaws.${var.region}.logs"\n  vpc_endpoint_type   = "Interface"\n  subnet_ids          = aws_subnet.app[*].id\n  security_group_ids  = [aws_security_group.endpoints.id]\n  private_dns_enabled = true',
      'service_name        = "com.amazonaws.${var.region}.logs"\n  vpc_endpoint_type   = "Interface"\n  subnet_ids          = aws_subnet.app[*].id\n  security_group_ids  = [aws_security_group.endpoints.id]\n  private_dns_enabled = false', ENDPOINT),
+    ("agent_logs_writable_from_outside_the_vpc", "iam.tf",
+     '        Condition = { StringEquals = { "aws:SourceVpce" = aws_vpc_endpoint.logs.id } }\n', "", ENDPOINT),
+    ("pgaudit_replaces_sql_statistics", "database.tf",
+     'value        = "pg_stat_statements,pgaudit"', 'value        = "pgaudit"', PUBLIC),
+    ("ddl_and_role_changes_not_audited", "database.tf", 'value        = "ddl,role"', 'value        = "none"', PUBLIC),
+    ("query_log_into_the_agent_group", "dns.tf",
+     'destination_arn = aws_cloudwatch_log_group.lab["dns"].arn',
+     'destination_arn = aws_cloudwatch_log_group.lab["agent"].arn', RESOLVER_LOG),
+    ("query_log_group_writable_by_anyone", "dns.tf",
+     'Principal = { Service = "delivery.logs.amazonaws.com" }', 'Principal = "*"', RESOLVER_LOG),
     ("empty_model_list_accepted", "variables.tf", "length(var.model_ids) > 0 && ", "", EMPTY_MODELS),
     ("oversized_vpc_accepted", "variables.tf",
      'split("/", var.vpc_cidr)[1] == "16"', 'tonumber(split("/", var.vpc_cidr)[1]) <= 16', LARGE_VPC),
 ]
 
 # In the order of tests/design.tftest.hcl.
-RUNS = [ENDPOINT, PUBLIC, WAY_OUT, FLOWS, INVOCATION_LOGS, EMPTY_MODELS, LARGE_VPC]
+RUNS = [ENDPOINT, PUBLIC, WAY_OUT, FLOWS, INVOCATION_LOGS, EMPTY_MODELS, LARGE_VPC, RESOLVER_LOG]
 
 
 def run(cmd, cwd):

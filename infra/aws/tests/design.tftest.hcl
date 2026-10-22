@@ -70,6 +70,11 @@ override_resource {
 }
 
 override_resource {
+  target = aws_cloudwatch_log_group.lab["dns"]
+  values = { arn = "arn:aws:logs:ap-northeast-2:111122223333:log-group:dns" }
+}
+
+override_resource {
   target = aws_cloudwatch_log_group.lab["postgresql"]
   values = { arn = "arn:aws:logs:ap-northeast-2:111122223333:log-group:postgresql" }
 }
@@ -155,10 +160,11 @@ run "models_are_reachable_only_as_listed_and_only_through_the_endpoint" {
           Resource = "arn:aws:rds-db:ap-northeast-2:111122223333:dbuser:cluster-MOCK/rag"
         },
         {
-          Sid      = "WriteItsOwnLogs"
-          Effect   = "Allow"
-          Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-          Resource = "${var.agent_logs}:*"
+          Sid       = "WriteItsOwnLogsThroughTheEndpoint"
+          Effect    = "Allow"
+          Action    = ["logs:CreateLogStream", "logs:PutLogEvents"]
+          Resource  = "${var.agent_logs}:*"
+          Condition = { StringEquals = { "aws:SourceVpce" = aws_vpc_endpoint.logs.id } }
         },
         {
           Sid       = "UseTheLabKeyOnlyThroughCloudWatchLogs"
@@ -169,7 +175,7 @@ run "models_are_reachable_only_as_listed_and_only_through_the_endpoint" {
         },
       ]
     }
-    error_message = "The agent role grants four things: the listed models through this endpoint, the vector store as rag, its own logs, and the lab key through CloudWatch Logs."
+    error_message = "The agent role grants four things: the listed models through the Bedrock endpoint, the vector store as rag, its own logs through the logs endpoint, and the lab key through CloudWatch Logs."
   }
 
   assert {
@@ -215,9 +221,19 @@ run "nothing_is_public_and_everything_is_encrypted" {
   }
 
   assert {
+    condition = ({ for p in aws_rds_cluster_parameter_group.lab.parameter : p.name => [p.value, p.apply_method] if contains(
+      ["shared_preload_libraries", "pgaudit.log", "log_disconnections"], p.name) } == {
+      shared_preload_libraries = ["pg_stat_statements,pgaudit", "pending-reboot"]
+      "pgaudit.log"            = ["ddl,role", "immediate"]
+      log_disconnections       = ["1", "immediate"]
+    })
+    error_message = "DDL and role changes must be audited by pgAudit, loaded next to pg_stat_statements rather than instead of it, and sessions must log their end."
+  }
+
+  assert {
     condition = (toset([for g in aws_cloudwatch_log_group.lab : g.name]) == toset([
       "/closed-network-ai-lab/vpc-flow", "/closed-network-ai-lab/agent", "/closed-network-ai-lab/bedrock-invocations",
-      "/aws/rds/cluster/closed-network-ai-lab/postgresql",
+      "/closed-network-ai-lab/resolver-queries", "/aws/rds/cluster/closed-network-ai-lab/postgresql",
     ]) && alltrue([for g in aws_cloudwatch_log_group.lab : g.kms_key_id == var.lab_key && g.retention_in_days >= 365]))
     error_message = "Every log group, including the one Aurora exports to, must use the lab key and keep a year or more."
   }
@@ -243,6 +259,7 @@ run "nothing_is_public_and_everything_is_encrypted" {
             ArnLike = {
               "kms:EncryptionContext:aws:logs:arn" = [
                 "arn:aws:logs:ap-northeast-2:111122223333:log-group:/closed-network-ai-lab/agent",
+                "arn:aws:logs:ap-northeast-2:111122223333:log-group:/closed-network-ai-lab/resolver-queries",
                 "arn:aws:logs:ap-northeast-2:111122223333:log-group:/closed-network-ai-lab/vpc-flow",
                 "arn:aws:logs:ap-northeast-2:111122223333:log-group:/closed-network-ai-lab/bedrock-invocations",
                 "arn:aws:logs:ap-northeast-2:111122223333:log-group:/aws/rds/cluster/closed-network-ai-lab/postgresql",
@@ -252,7 +269,7 @@ run "nothing_is_public_and_everything_is_encrypted" {
         },
       ]
     }
-    error_message = "The lab key must rotate, and only the account and CloudWatch Logs, for these four groups, may use it."
+    error_message = "The lab key must rotate, and only the account and CloudWatch Logs, for these five groups, may use it."
   }
 }
 
@@ -270,6 +287,14 @@ run "no_way_out_but_the_endpoints" {
       && toset(concat(aws_route_table_association.app[*].subnet_id, aws_route_table_association.data[*].subnet_id)) == toset(concat(aws_subnet.app[*].id, aws_subnet.data[*].id))
     && alltrue([for a in concat(aws_route_table_association.app, aws_route_table_association.data) : a.route_table_id == aws_route_table.private.id]))
     error_message = "Every subnet must use the route table that holds only the local route."
+  }
+
+  assert {
+    condition = (aws_default_network_acl.lab.subnet_ids == toset(concat(aws_subnet.app[*].id, aws_subnet.data[*].id))
+      && length(aws_default_network_acl.lab.ingress) > 0 && length(aws_default_network_acl.lab.egress) > 0
+      && alltrue([for r in concat(tolist(aws_default_network_acl.lab.ingress), tolist(aws_default_network_acl.lab.egress)) :
+    r.cidr_block == var.vpc_cidr && r.action == "allow" && !contains(["-1", "all"], r.protocol)]))
+    error_message = "The subnets' network ACL must admit only the VPC's own range, port by port."
   }
 
   assert {
@@ -430,4 +455,33 @@ run "a_vpc_larger_than_aws_allows_is_refused" {
   }
 
   expect_failures = [var.vpc_cidr]
+}
+
+run "refused_names_leave_a_record" {
+  command = apply
+
+  assert {
+    condition = (aws_route53_resolver_query_log_config.lab.destination_arn == "arn:aws:logs:ap-northeast-2:111122223333:log-group:dns"
+      && aws_route53_resolver_query_log_config_association.lab.resource_id == aws_vpc.lab.id
+    && aws_route53_resolver_query_log_config_association.lab.resolver_query_log_config_id == aws_route53_resolver_query_log_config.lab.id)
+    error_message = "Every DNS query from the VPC, refused ones included, must be logged to the resolver-queries group."
+  }
+
+  assert {
+    condition = jsondecode(aws_cloudwatch_log_resource_policy.resolver_queries.policy_document) == {
+      Version = "2012-10-17"
+      Statement = [{
+        Sid       = "ResolverDeliversQueryLogs"
+        Effect    = "Allow"
+        Principal = { Service = "delivery.logs.amazonaws.com" }
+        Action    = ["logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource  = "arn:aws:logs:ap-northeast-2:111122223333:log-group:dns:log-stream:*"
+        Condition = {
+          StringEquals = { "aws:SourceAccount" = "111122223333" }
+          ArnLike      = { "aws:SourceArn" = "arn:aws:logs:ap-northeast-2:111122223333:*" }
+        }
+      }]
+    }
+    error_message = "Only the log delivery service, acting for this account, may write the query log group."
+  }
 }

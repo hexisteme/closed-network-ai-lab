@@ -15,6 +15,52 @@ resource "aws_default_security_group" "lab" {
   vpc_id = aws_vpc.lab.id
 }
 
+# Every subnet here uses the default network ACL, which AWS creates open to 0.0.0.0/0. It now
+# admits only the VPC's own range: HTTPS to the endpoints, and the high ports that carry
+# PostgreSQL and every reply (an ACL keeps no state). With no route out this changes nothing
+# today; it is the layer that still holds if a gateway is added. ACLs do not filter traffic to
+# the Amazon DNS server, so the Resolver and its firewall are unaffected.
+resource "aws_default_network_acl" "lab" {
+  default_network_acl_id = aws_vpc.lab.default_network_acl_id
+  subnet_ids             = concat(aws_subnet.app[*].id, aws_subnet.data[*].id)
+
+  ingress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 443
+    to_port    = 443
+  }
+
+  ingress {
+    rule_no    = 110
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  egress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 443
+    to_port    = 443
+  }
+
+  egress {
+    rule_no    = 110
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 1024
+    to_port    = 65535
+  }
+}
+
 resource "aws_subnet" "app" {
   count = length(var.availability_zones)
 

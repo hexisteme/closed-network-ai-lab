@@ -10,6 +10,7 @@ locals {
     flow        = "/${var.name}/vpc-flow"
     agent       = "/${var.name}/agent"
     invocations = "/${var.name}/bedrock-invocations"
+    dns         = "/${var.name}/resolver-queries"
     postgresql  = "/aws/rds/cluster/${var.name}/postgresql"
   }
 

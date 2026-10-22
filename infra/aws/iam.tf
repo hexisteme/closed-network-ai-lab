@@ -37,10 +37,13 @@ resource "aws_iam_role_policy" "agent" {
         Resource = "arn:${local.partition}:rds-db:${var.region}:${local.account_id}:dbuser:${aws_rds_cluster.lab.cluster_resource_id}/rag"
       },
       {
-        Sid      = "WriteItsOwnLogs"
-        Effect   = "Allow"
-        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = "${aws_cloudwatch_log_group.lab["agent"].arn}:*"
+        # Through the logs endpoint only: a copied credential cannot write the agent's log from
+        # outside the VPC and muddy the record it is judged by.
+        Sid       = "WriteItsOwnLogsThroughTheEndpoint"
+        Effect    = "Allow"
+        Action    = ["logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource  = "${aws_cloudwatch_log_group.lab["agent"].arn}:*"
+        Condition = { StringEquals = { "aws:SourceVpce" = aws_vpc_endpoint.logs.id } }
       },
       local.write_encrypted_logs,
     ]

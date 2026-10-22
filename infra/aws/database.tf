@@ -21,6 +21,28 @@ resource "aws_rds_cluster_parameter_group" "lab" {
     name  = "log_connections"
     value = "1"
   }
+
+  parameter {
+    name         = "log_disconnections"
+    value        = "1"
+    apply_method = "immediate"
+  }
+
+  # pgAudit records DDL and role changes, such as the master user's setup of `rag`. It is added
+  # next to pg_stat_statements, which Performance Insights reads SQL statistics from; setting the
+  # list to pgaudit alone would drop it. The library loads at startup, so this applies on reboot,
+  # and `CREATE EXTENSION pgaudit` still has to run in the database (see README).
+  parameter {
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements,pgaudit"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "pgaudit.log"
+    value        = "ddl,role"
+    apply_method = "immediate"
+  }
 }
 
 resource "aws_rds_cluster" "lab" {
