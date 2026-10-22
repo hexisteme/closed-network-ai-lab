@@ -1,0 +1,39 @@
+name: closed-network-ai-lab
+
+# lab_internal has no route to the internet (internal: true).
+# model-gateway is the only service on both networks; it forwards allowlisted
+# requests to the host's local Ollama and nothing else.
+networks:
+  lab_internal:
+    internal: true
+  egress: {}
+
+x-lab-models: &lab-models qwen3:4b,gemma3:4b,bge-m3
+
+services:
+  model-gateway:
+    image: python:3.12-slim
+    command: ["python", "-u", "/srv/model_gateway.py"]
+    environment:
+      UPSTREAM: http://host.docker.internal:11434
+      LAB_MODELS: *lab-models
+      AUDIT_LOG: /logs/gateway-audit.jsonl
+    volumes:
+      - ./gateway:/srv:ro
+      - ./logs:/logs
+    networks: [lab_internal, egress]
+
+  egress-check:
+    image: python:3.12-slim
+    command: ["python", "-u", "/work/egress_check.py"]
+    environment:
+      GATEWAY: http://model-gateway:8080
+      CHAT_MODELS: qwen3:4b,gemma3:4b
+      EMBED_MODEL: bge-m3
+      BLOCKED_MODEL: nemotron-3-nano:30b-cloud
+    volumes:
+      - ./app:/work:ro
+      - ./evidence:/evidence
+    networks: [lab_internal]
+    depends_on: [model-gateway]
+    profiles: [check]
