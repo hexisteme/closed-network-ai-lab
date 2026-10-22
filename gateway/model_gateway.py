@@ -67,9 +67,21 @@ def append_audit(audit_path: str, record: dict) -> None:
         fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def load_gateway_policy(env) -> tuple:
+    """Return (release id, allowlist). With RELEASE_DIR set, the active release decides and a
+    missing or invalid release stops the gateway; otherwise LAB_MODELS does, with no release id."""
+    if env.get("RELEASE_DIR"):
+        from release import active_release_id, load_release, release_models
+
+        release_id = active_release_id(env["RELEASE_DIR"])
+        return release_id, release_models(load_release(env["RELEASE_DIR"], release_id))
+    return None, parse_allowlist(env.get("LAB_MODELS", ""))
+
+
 class GatewayEndpoint(BaseHTTPRequestHandler):
     upstream = "http://host.docker.internal:11434"
     allowed_models = frozenset()
+    release_id = None
     audit_path = "/logs/gateway-audit.jsonl"
 
     def do_GET(self):
@@ -103,10 +115,13 @@ class GatewayEndpoint(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        if self.release_id:
+            self.send_header("X-Lab-Release", self.release_id)
         self.end_headers()
         self.wfile.write(data)
         append_audit(self.audit_path, {
             "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "release": self.release_id,
             "method": method,
             "path": path,
             "model": model,
@@ -137,10 +152,11 @@ class GatewayEndpoint(BaseHTTPRequestHandler):
 
 def main() -> None:
     GatewayEndpoint.upstream = os.environ.get("UPSTREAM", GatewayEndpoint.upstream).rstrip("/")
-    GatewayEndpoint.allowed_models = parse_allowlist(os.environ.get("LAB_MODELS", ""))
+    GatewayEndpoint.release_id, GatewayEndpoint.allowed_models = load_gateway_policy(os.environ)
     GatewayEndpoint.audit_path = os.environ.get("AUDIT_LOG", GatewayEndpoint.audit_path)
     port = int(os.environ.get("PORT", "8080"))
-    print(f"model-gateway on :{port} -> {GatewayEndpoint.upstream} allow={sorted(GatewayEndpoint.allowed_models)}", flush=True)
+    print(f"model-gateway on :{port} -> {GatewayEndpoint.upstream} release={GatewayEndpoint.release_id} "
+          f"allow={sorted(GatewayEndpoint.allowed_models)}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), GatewayEndpoint).serve_forever()
 
 

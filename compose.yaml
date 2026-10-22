@@ -8,18 +8,19 @@ networks:
     internal: true
   egress: {}
 
-x-lab-models: &lab-models qwen3:4b,gemma3:4b,bge-m3
-
 services:
+  # The allowlist comes from the active release (releases/ACTIVE -> releases/<id>.json).
+  # Switch or roll back with gateway/release.py on the host, then restart this service.
   model-gateway:
     image: python:3.12-slim
     command: ["python", "-u", "/srv/model_gateway.py"]
     environment:
       UPSTREAM: http://host.docker.internal:11434
-      LAB_MODELS: *lab-models
+      RELEASE_DIR: /releases
       AUDIT_LOG: /logs/gateway-audit.jsonl
     volumes:
       - ./gateway:/srv:ro
+      - ./releases:/releases:ro
       - ./logs:/logs
     networks: [lab_internal, egress]
 
@@ -192,6 +193,8 @@ services:
       - ./gateway:/lab/gateway:ro
       - ./rag:/lab/rag:ro
       - ./tests:/lab/tests:ro
+      - ./releases:/lab/releases:ro
+      - ./compose.yaml:/lab/compose.yaml:ro
     network_mode: none
     profiles: [test]
 

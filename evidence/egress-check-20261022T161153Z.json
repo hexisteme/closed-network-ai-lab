@@ -1,0 +1,113 @@
+{
+  "run_at": "20261022T161153Z",
+  "network": "lab_internal (Docker internal network, no gateway to the internet)",
+  "passed": true,
+  "checks": [
+    {
+      "name": "internet_ip_blocked",
+      "expect": "TCP to 1.1.1.1:443 fails",
+      "passed": true,
+      "observed": "OSError: [Errno 101] Network is unreachable"
+    },
+    {
+      "name": "internet_https_blocked",
+      "expect": "HTTPS to example.com fails",
+      "passed": true,
+      "observed": "[Errno -3] Temporary failure in name resolution"
+    },
+    {
+      "name": "host_model_api_unreachable",
+      "expect": "direct TCP to host Ollama fails (no gateway bypass)",
+      "passed": true,
+      "observed": "gaierror: [Errno -3] Temporary failure in name resolution"
+    },
+    {
+      "name": "host_model_port_closed_on_bridge",
+      "expect": "TCP to the network's gateway address on the Ollama port fails",
+      "passed": true,
+      "observed": {
+        "address": "172.21.0.1",
+        "result": "ConnectionRefusedError: [Errno 111] Connection refused"
+      }
+    },
+    {
+      "name": "gateway_ready",
+      "expect": "gateway answers /api/version within 30 s",
+      "passed": true,
+      "observed": "http://model-gateway:8080"
+    },
+    {
+      "name": "gateway_lists_only_allowed_models",
+      "expect": "200 and no cloud models listed",
+      "passed": true,
+      "observed": [
+        "bge-m3:latest",
+        "gemma3:4b",
+        "qwen3:4b"
+      ]
+    },
+    {
+      "name": "model_download_denied",
+      "expect": "403 path_not_allowed",
+      "passed": true,
+      "observed": {
+        "status": 403,
+        "body": {
+          "error": "path_not_allowed"
+        }
+      }
+    },
+    {
+      "name": "cloud_model_denied",
+      "expect": "403 cloud_model_blocked",
+      "passed": true,
+      "observed": {
+        "status": 403,
+        "body": {
+          "error": "cloud_model_blocked"
+        }
+      }
+    },
+    {
+      "name": "chat_via_gateway:qwen3:4b",
+      "expect": "200, finished answer, no reasoning text in it",
+      "passed": true,
+      "observed": {
+        "status": 200,
+        "problem": null,
+        "answer": "ready",
+        "thinking_chars": 667,
+        "done_reason": "stop",
+        "eval_count": 159,
+        "latency_ms": 8939,
+        "error": null
+      }
+    },
+    {
+      "name": "chat_via_gateway:gemma3:4b",
+      "expect": "200, finished answer, no reasoning text in it",
+      "passed": true,
+      "observed": {
+        "status": 200,
+        "problem": null,
+        "answer": "Ready",
+        "thinking_chars": 0,
+        "done_reason": "stop",
+        "eval_count": 3,
+        "latency_ms": 8414,
+        "error": null
+      }
+    },
+    {
+      "name": "embed_via_gateway:bge-m3",
+      "expect": "200 and a non-empty vector",
+      "passed": true,
+      "observed": {
+        "status": 200,
+        "dimension": 1024,
+        "latency_ms": 3243,
+        "error": null
+      }
+    }
+  ]
+}

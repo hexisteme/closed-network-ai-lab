@@ -39,8 +39,8 @@ commands, no network.
 
 ## Acceptance criteria
 
-Each criterion is a test that must pass: `docker compose --profile test run --rm lab-test` (157 tests
-on Linux in the lab image with no network, 2026-10-22). On the host, `python3 -m unittest discover -s
+Each criterion is a test that must pass: `docker compose --profile test run --rm lab-test` (179 tests
+on Linux in the lab image with no network, 2026-10-23). On the host, `python3 -m unittest discover -s
 tests` skips the 10 that need LangGraph. A13 has its own runner, `infra/aws/check.sh`.
 
 | # | Criterion | Evidence |
@@ -58,6 +58,7 @@ tests` skips the 10 that need LangGraph. A13 has its own runner, `infra/aws/chec
 | A11 | Retrieval stays inside the closed network and its quality is measured, not asserted: the store and the evaluator have no route out, every model call goes through the gateway, and recall@k, MRR and whether each answer cites at least one article and names only articles it was shown are written to the evidence file. | `tests/test_rag.py`; `docker compose --profile rag run --rm rag-eval` |
 | A12 | An agent built on a framework (LangGraph) keeps A2 to A4 and A10: its extra tools are decided by the same boundary, a side effect stops the graph until a person answers, only an explicit yes approves, a declined call is not asked again, and a memo does not count as done if it cites an article the agent never retrieved, cites a range, misses the article on transfers abroad, or runs past ten nonblank lines. | `tests/test_rag_agent.py`; `docker compose --profile rag-agent run --rm rag-agent` |
 | A13 | The same layout on AWS is written as code, and its claims are assertions that run offline: models only as listed and only through the VPC endpoint, no route, network ACL opening or DNS name out beyond the VPC, its endpoints and the database, nothing public, everything encrypted, only named flows between named groups, no bodies in the invocation log, DNS query logging on for the whole VPC (answers served from the resolver's cache are not logged), DDL and role changes audited. Each of 33 deliberate breaks fails the run that covers it. Nothing is deployed. | `infra/aws/tests/design.tftest.hcl` through `infra/aws/check.sh`; `infra/aws/tests/break_the_design.py` |
+| A14 | The gateway serves only the active release of its model allowlist, each model pinned to the digest of its installed weights, and refuses to start without a valid one. A switch validates the target, replaces the pointer in one rename and logs the switch; rollback returns to the previous release. In the rehearsal, r1 passes its checks, a plausible bad release (r2, the embedding model dropped) passes validation but fails a check after the switch, and rollback to r1 passes all checks again. | `tests/test_release.py`; `python3 gateway/release_rehearsal.py` |
 
 A6 does not claim the model ignores planted instructions. It claims the boundary does not care
 whether it does. The rules do not encode which file the summary goes to: an approved `write_file`
@@ -90,6 +91,11 @@ A13 checks the code, not AWS. The tests read planned values from a mock provider
 the design says what the table in `infra/aws/README.md` claims, not that AWS enforces it that way.
 trivy's built-in HIGH and CRITICAL checks caught 4 of the 33 breaks; the other 29 break rules only
 this design defines, such as which models the endpoint allows or which names DNS answers.
+
+A14 rolls back the gateway's configuration, not the lab. Prompts and the tool policy roll back
+with git, Terraform changes have no rollback, and the rehearsal's model host is a stand-in built
+from a captured listing of the installed models, so it shows the switch and the checks, not a
+slow or failing model host.
 
 ## Static check before deployment (weeks 3 to 5)
 

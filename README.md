@@ -28,18 +28,19 @@ the owner's decisions and how the case could be wrong are in
 
 | Claim | Checked by | Latest result |
 |---|---|---|
-| No route out of the lab network; the gateway is the only way to the models | `egress-check` | [11 of 11 checks](evidence/egress-check-20261022T081906Z.json) |
-| A1 to A6: a document-review workflow completes with one approval; every call that breaks the configured rules (tool list, schema, workspace path, command and option lists, approval) is refused with a named reason; an approval covers one call with exact arguments; audit lines carry no argument values; instructions planted in a document do not widen what the agent may do | `tests/test_review_workflow.py`, `tests/test_tool_boundary.py` | 157 tests pass on Linux in the lab image (2026-10-22) |
+| No route out of the lab network; the gateway is the only way to the models | `egress-check` | [11 of 11 checks](evidence/egress-check-20261022T161153Z.json), with the gateway serving release r1 |
+| A1 to A6: a document-review workflow completes with one approval; every call that breaks the configured rules (tool list, schema, workspace path, command and option lists, approval) is refused with a named reason; an approval covers one call with exact arguments; audit lines carry no argument values; instructions planted in a document do not widen what the agent may do | `tests/test_review_workflow.py`, `tests/test_tool_boundary.py` | 179 tests pass on Linux in the lab image (2026-10-23) |
 | A7, A8: an allowed call runs as decided and nothing else; the audit log file can be checked without trusting the code that wrote it | `tests/test_tool_session.py`, `agent/audit_check.py` | as above |
 | A9: the case runs end to end in the closed lab with scripted approvals | `review-demo` | [6 steps, 40-line audit log, no violations](evidence/review-demo-20261022T060423Z-3867ed.json) |
 | A10: with qwen3:4b proposing the calls, the boundary holds whatever it proposes | `review-agent`, `tests/test_review_agent.py` | [no prompt defense](evidence/review-agent-20261022T063744Z-b34ff4.json): 9 calls refused, job not done · [one defense sentence](evidence/review-agent-20261022T063848Z-a73fbe.json): job done with one approval |
 | A11: retrieval over public law text stays inside the network and its quality is measured | `rag-eval`, `tests/test_rag.py` | [recall@5 0.958 over 24 questions](evidence/rag-eval-20261022T081909Z-06dbc0.json) |
 | A12: a LangGraph agent keeps the same boundary and pauses for approval before writing | `rag-agent`, `tests/test_rag_agent.py` | [one pause, one approval, every cited article retrieved](evidence/rag-agent-20261022T082220Z-30c48f.json) |
 | A13: the same layout on AWS is code whose claims are offline assertions | `infra/aws/check.sh`, `infra/aws/tests/break_the_design.py` | 8 of 8 test runs pass, [no trivy HIGH or CRITICAL finding](evidence/iac-check-20261022T120119Z.json), 33 of 33 deliberate breaks caught |
+| A14: the gateway serves one versioned release of its model allowlist, and a bad release can be rolled back | `gateway/release_rehearsal.py`, `tests/test_release.py` | [r1 passes 7 checks, r2 fails the embedding check, rollback to r1 passes all 7 again](evidence/release-rehearsal-20261022T160225Z-7aeb8f.json) |
 
 Approvals in the A10 and A12 runs were piped by the operator; a run approved at a terminal is still
-to be done. Results without an evidence file in this repository are the author's report of a run on
-2026-10-22: the 157 tests on Linux, the eight Terraform runs and the 33 breaks, the tool versions in
+to be done. Results without an evidence file in this repository are the author's report of runs on
+2026-10-22 and 2026-10-23: the 179 tests on Linux (10-23), the eight Terraform runs and the 33 breaks, the tool versions in
 the network check, and the tool-calling comparison under the review agent.
 
 ## Run
@@ -296,6 +297,35 @@ article and its five grounds for a transfer, but it loses conditions:
 The citation check catches an article the agent never saw. It cannot catch a wrong reading of one
 it did see, so the person approving the memo still has to read it against the source.
 
+## Releases and rollback
+
+The gateway forwards only to models on its allowlist. That allowlist is now a release: one file,
+`releases/<id>.json`, naming each allowed model and pinning it to the digest of the weights
+installed on the lab host. `releases/ACTIVE` names the release the gateway serves; the gateway
+reports it in an `X-Lab-Release` header and in every audit line, and refuses to start if the
+active release is missing or invalid.
+
+```sh
+python3 gateway/release.py status
+python3 gateway/release.py check                          # do the pinned digests match the installed weights?
+python3 gateway/release.py activate r2 --reason "..."     # validate, switch in one rename, log the switch
+python3 gateway/release.py rollback --reason "..."        # back to the release active before this one
+docker compose restart model-gateway                      # the gateway loads a release at start
+```
+
+The rehearsal (`python3 gateway/release_rehearsal.py`, A14) runs the real gateway in-process in
+front of a stand-in model host built from a captured `/api/tags` listing. Release r1 passes 7
+checks. r2 is r1 with `bge-m3` dropped: it passes validation, so the switch accepts it, and the
+embedding check then fails with 403. Rollback restores r1 and all 7 checks pass again. The switch
+log has one line per switch with the release's SHA-256, and the gateway's audit lines name the
+release served at each step ([evidence](evidence/release-rehearsal-20261022T160225Z-7aeb8f.json)).
+
+What it does not cover: prompts and the tool policy live in code and roll back with git; Terraform
+changes have no rollback; a switch cannot restore weights overwritten on the host, it can only
+report the mismatch; rollback is manual; and a second rollback goes back to the release just left.
+The switch log is written to `logs/`, which is not committed; `releases/ACTIVE` is the committed
+record of what is deployed.
+
 ## The same layout on AWS
 
 [`infra/aws`](infra/aws/README.md) writes the lab for the Seoul Region in Terraform: private
@@ -352,11 +382,11 @@ Status words:
 | GENREL03-BP01 Manage prompt flows and recover from failure | Tested | Unparseable replies and model errors stop either agent with a named reason (`test_review_agent.py`, `test_rag_agent.py`). It stops; it does not retry |
 | GENREL03-BP02 Timeouts on agentic workflows | Tested, in part · Not addressed | Tested: each tool program is killed after 10 s (`test_capture_kills_a_program_past_its_time_limit`); a 12-turn limit and a LangGraph recursion limit bound the number of steps, not the time. Untested: the 300 s limit per model call. Not addressed: the approval prompt waits with no deadline, database queries have a 10 s connect timeout but no statement timeout, and the workflow as a whole has no deadline |
 | GENREL04-BP01 Prompt catalog | Not addressed | |
-| GENREL04-BP02 Model catalog | Not addressed | No catalog of model versions. What exists is an allowlist, which restricts access: the gateway serves only listed models (`tests/test_model_gateway.py`), and on AWS the endpoint policy allows only `model_ids`. Local models are named by tag, not digest, so a tag pulled again on the host could change the model unnoticed |
+| GENREL04-BP02 Model catalog | Tested, in part | Locally, each release in `releases/` names the allowed models and pins each to the digest of its installed weights; `gateway/release.py check` reports a digest that no longer matches (`tests/test_release.py`, A14). It is a versioned allowlist, not a catalog: no model card, licence or evaluation result per version, and the digest is checked by `check` and the rehearsal, not on each request. On AWS the endpoint policy allows only `model_ids`, by ID, not version |
 | GENREL05 Distribute across Regions | Not addressed, on purpose | Seoul only, for data that has to stay in Korea; the endpoint policy excludes cross-Region inference profiles |
 | GENREL06-BP01 Fault-tolerant distributed computation | Not applicable | No training or distributed jobs |
 | Database recovery (framework reliability pillar) | IaC only | By default one Aurora instance in each of two zones, backups kept 7 days, a final snapshot, deletion protection. The tests assert deletion protection only; instance count, zones, backups and the snapshot are not asserted |
-| Rollback | Not addressed | Nothing versions a release of the gateway, prompts, models or infrastructure so that it can be rolled back, and no rollback has been rehearsed |
+| Rollback | Tested, gateway configuration only · Not addressed beyond it | The model allowlist is a versioned release; `gateway/release.py` activates one or rolls back to the previous one by replacing `releases/ACTIVE` in one rename and logging the switch. The A14 rehearsal activates a bad release, its checks catch it, and rollback restores the good one. The gateway loads a release only at start, so a switch needs a restart. Prompts and the tool policy are code and roll back with git; Terraform changes have no rollback, and weights overwritten on the host cannot be restored by a switch |
 
 ### Performance efficiency ([lens](https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/performance-efficiency.html))
 
@@ -411,8 +441,8 @@ The lens's own security practices:
 | GENSEC05-BP01 Least privilege for agentic workflows | Tested | A1 to A10 and A12 |
 | GENSEC06-BP01 Data purification for training | Not applicable | No training. The corpus is the statute fetched once from the government API; the evaluation records its SHA-256 |
 
-The largest gaps for a production review are monitoring with alarms, rollback, load testing, cost
-estimation and a CI pipeline that reruns the checks.
+The largest gaps for a production review are monitoring with alarms, rollback beyond the gateway
+configuration, load testing, cost estimation and a CI pipeline that reruns the checks.
 
 ## Status
 
@@ -421,9 +451,11 @@ file and the document-review acceptance case, scripted and with a local model pr
 calls; retrieval over public law text with a measured evaluation, and a LangGraph agent that
 pauses for approval; the same layout on AWS as Terraform, tested offline against a mock provider,
 statically checked and reviewed against the Well-Architected security pillar, not deployed; the
-review above of the other five pillars and the Generative AI Lens.
+review above of the other five pillars and the Generative AI Lens; a versioned release of the
+gateway's model allowlist with a rehearsed rollback.
 
-Not done: a run approved at a terminal, rollback, alarms, a load test, a cost estimate and CI.
+Not done: a run approved at a terminal, rollback beyond the gateway configuration, alarms, a load
+test, a cost estimate and CI.
 
 ## How this was built
 
