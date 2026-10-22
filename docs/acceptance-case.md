@@ -56,9 +56,35 @@ whether it does.
 
 The boundary contains what an agent host lets through. A customer also deploys tool servers, and
 those can pass arguments to a shell themselves. That part is checked before deployment with an
-open detection rule for tool arguments that reach shell commands (the Semgrep MCP rule family,
-TypeScript). The rule is measured against labelled positive, negative and unseen fixtures, and only
-against tools that read source without running it.
+open detection rule for shell commands built from values that are not fixed in the source
+([`mcp-dynamic-shell-command`](https://github.com/semgrep/semgrep-rules/pull/4109), Semgrep,
+TypeScript and JavaScript, under review). It is an audit rule: it points a reviewer at the call and
+does not claim that a tool caller controls the value. It is compared only with tools that read
+source without running it.
+
+Measurement, 2026-10-22, on 42 public MCP server repositories that were not used to write the rule
+(deployed code only, rule frozen before the run):
+
+- 864 shell-related call sites, labelled without seeing any tool output: one LLM labeller pass over
+  all sites and a second independent pass over a random 25% (Cohen's κ 0.86 on the overlap).
+- 58 sites are positive: a string run through a shell contains a value not fixed in the source.
+  This is not a vulnerability verdict.
+
+| Source-only tool | Precision | Recall (of 58) |
+|---|---|---|
+| Five existing Semgrep registry shell rules, combined | 75% | 5% |
+| CodeQL 2.27.3, four JavaScript command-injection queries | 95% | 31% |
+| The rule as first proposed | 79% | 38% |
+| The rule as revised | 86% | 62% |
+
+No source-only tool reached 90% on both, so the second condition below did not trigger. The rule
+and CodeQL find different sites; together they find 43 of the 58. Most of the rule's misses pass an
+opaque identifier to a wrapper, which needs cross-function dataflow.
+
+The numbers describe this sample only. The positive definition favours an audit rule: CodeQL's
+queries need a modelled source, and MCP tool arguments are not one. Recall is counted against a
+census of exec-family calls. The repositories are popular ones, not a random sample, and the
+positives sit in 8 of them. The rule, the census and the labelling brief share an author.
 
 ## How this case could be wrong
 
