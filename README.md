@@ -103,3 +103,7 @@ human approval step, then an infrastructure-as-code design for the same layout o
 Built with an AI coding agent (Claude Code) from the owner's requirements: closed network,
 zero cost, local models only. The owner reviews the code and reruns the checks before each
 published result.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

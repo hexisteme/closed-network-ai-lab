@@ -12,7 +12,7 @@ in general.
 | 2026-10-21 | Build a defensive case (a tool-call boundary) rather than another vulnerability hunt. |
 | 2026-10-22 | The permitted workflow is a document-review assistant (below), not log triage. |
 | 2026-10-22 | Publish the lab as a public repository once the criteria below pass and the owner has rerun the checks. |
-| 2026-10-22 | Proposed by the agent, for the owner to confirm at review: `run` needs no approval, because every command on its list (`grep`, `wc`) only reads. A test fails if the list grows or approval is switched off silently. |
+| 2026-10-22 | `run` needs no approval, because every command on its list (`grep`, `wc`) only reads. Proposed by the agent, confirmed by the owner. A test fails if the list grows or approval is switched off silently. |
 
 ## The permitted workflow
 
