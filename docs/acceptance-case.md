@@ -46,7 +46,7 @@ tests` skips the 10 that need LangGraph. A13 has its own runner, `infra/aws/chec
 | # | Criterion | Evidence |
 |---|---|---|
 | A1 | The permitted workflow completes from start to finish with one approval. | `PermittedWorkflowTest.test_workflow_completes_with_one_approval_for_the_summary` |
-| A2 | Every call outside the workflow is refused with a named reason: unknown tool, schema mismatch, path outside the workspace, command or option off the list, side effect without approval. | `SchemaTest`, `PathConfinementTest`, `CommandTest`, `ApprovalTest` |
+| A2 | Every call that breaks the configured rules is refused with a named reason: unknown tool, schema mismatch, path outside the workspace, command or option off the list, side effect without approval. | `SchemaTest`, `PathConfinementTest`, `CommandTest`, `ApprovalTest` |
 | A3 | An approval covers one call with exactly the approved arguments, is used once, and can be withdrawn before use. | `ApprovalTest`, including `test_withdrawn_approval_no_longer_allows` |
 | A4 | Every decision writes one audit line without argument values, and an approval can be matched to the call it allowed. | `AuditTest`: the approval line and the decision line share a random `approval_id` that is not derived from the arguments |
 | A5 | No call in the permitted workflow is refused (no false denials on the benign set). | `PermittedWorkflowTest.test_every_benign_call_is_allowed_without_approval` (6 calls) |
@@ -56,11 +56,12 @@ tests` skips the 10 that need LangGraph. A13 has its own runner, `infra/aws/chec
 | A9 | The whole case runs end to end in the closed lab, and leaves files a reviewer can rerun and compare. | `docker compose --profile demo run --rm review-demo`: six steps, then the log is reconciled; `tests/test_review_demo.py` |
 | A10 | With a local model proposing the calls, the boundary holds whatever the model proposes, nothing it refused reaches the model, and a side effect runs only after a person approves its exact arguments; a declined call is not asked again. | `tests/test_review_agent.py`; `docker compose --profile agent run --rm review-agent`, with and without `PROMPT_DEFENSE=1` |
 | A11 | Retrieval stays inside the closed network and its quality is measured, not asserted: the store and the evaluator have no route out, every model call goes through the gateway, and recall@k, MRR and whether each answer cites at least one article and names only articles it was shown are written to the evidence file. | `tests/test_rag.py`; `docker compose --profile rag run --rm rag-eval` |
-| A12 | An agent built on a framework (LangGraph) keeps A2 to A4 and A10: its extra tools are decided by the same boundary, a side effect stops the graph until a person answers, only an explicit yes approves, a declined call is not asked again, and a memo does not count as done if it cites an article the agent never retrieved, cites a range, misses the article on transfers abroad, or runs past ten lines. | `tests/test_rag_agent.py`; `docker compose --profile rag-agent run --rm rag-agent` |
-| A13 | The same layout on AWS is written as code, and its claims are assertions that run offline: models only as listed and only through the VPC endpoint, no route, network ACL opening or DNS name out beyond the VPC, its endpoints and the database, nothing public, everything encrypted, only named flows between named groups, no bodies in the invocation log, every DNS query logged, DDL and role changes audited. Each of 33 deliberate breaks fails the run that covers it. Nothing is deployed. | `infra/aws/tests/design.tftest.hcl` through `infra/aws/check.sh`; `infra/aws/tests/break_the_design.py` |
+| A12 | An agent built on a framework (LangGraph) keeps A2 to A4 and A10: its extra tools are decided by the same boundary, a side effect stops the graph until a person answers, only an explicit yes approves, a declined call is not asked again, and a memo does not count as done if it cites an article the agent never retrieved, cites a range, misses the article on transfers abroad, or runs past ten nonblank lines. | `tests/test_rag_agent.py`; `docker compose --profile rag-agent run --rm rag-agent` |
+| A13 | The same layout on AWS is written as code, and its claims are assertions that run offline: models only as listed and only through the VPC endpoint, no route, network ACL opening or DNS name out beyond the VPC, its endpoints and the database, nothing public, everything encrypted, only named flows between named groups, no bodies in the invocation log, DNS query logging on for the whole VPC (answers served from the resolver's cache are not logged), DDL and role changes audited. Each of 33 deliberate breaks fails the run that covers it. Nothing is deployed. | `infra/aws/tests/design.tftest.hcl` through `infra/aws/check.sh`; `infra/aws/tests/break_the_design.py` |
 
 A6 does not claim the model ignores planted instructions. It claims the boundary does not care
-whether it does.
+whether it does. The rules do not encode which file the summary goes to: an approved `write_file`
+may overwrite any regular file in the workspace, a document under review included.
 
 The A9 run records, for each step, the `call_id`s of its calls, so each claim in the evidence file
 points at lines in the audit log. The calls are fixed in `agent/review_demo.py`; a rerun gives the
@@ -87,7 +88,7 @@ correctly.
 
 A13 checks the code, not AWS. The tests read planned values from a mock provider, so they show that
 the design says what the table in `infra/aws/README.md` claims, not that AWS enforces it that way.
-trivy's built-in HIGH and CRITICAL checks caught 4 of the 27 breaks; the other 23 break rules only
+trivy's built-in HIGH and CRITICAL checks caught 4 of the 33 breaks; the other 29 break rules only
 this design defines, such as which models the endpoint allows or which names DNS answers.
 
 ## Static check before deployment (weeks 3 to 5)
