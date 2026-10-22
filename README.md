@@ -74,7 +74,7 @@ readily as `notes.txt`. The boundary checks what the schema cannot express:
 | Check | Refuses |
 |---|---|
 | Tool list and strict schema | unknown tools, missing or extra arguments, wrong types |
-| Path confinement (`realpath`) | `../` traversal, absolute paths, symlinks leading out, a sibling such as `workspace-evil` |
+| Path confinement (`realpath`) | any path that resolves outside the workspace: `../` traversal or an absolute path leading out, symlinks leading out, a sibling such as `workspace-evil` |
 | Commands as argv, no shell | commands off the list, commands given as a path (`/bin/sh`) |
 | Per-command option list | options that carry a file: `--file=/etc/passwd`, `-f/etc/passwd` |
 | Human approval per exact arguments | side effects without approval, approval reused, withdrawn or applied to other arguments |
@@ -83,20 +83,56 @@ Audit lines record the tool, the decision and the argument size, never argument 
 approval and the call it allowed share a random `approval_id`. `run` needs no approval because
 its list holds only commands that read (`grep`, `wc`).
 
-[docs/acceptance-case.md](docs/acceptance-case.md) applies the boundary to one workflow, a
-document-review assistant, including a reviewed document that carries planted instructions.
-Tests: `python3 -m unittest tests.test_tool_boundary tests.test_review_workflow`.
+### Execution and the audit log file
 
-Known limits: a path is checked before use, so a symlink swapped in between check and use
-(time-of-check to time-of-use) or a hard link created inside the workspace is not caught
-here; the workspace has to be a volume that holds nothing else. Every non-option command
-argument is treated as a path, so a grep pattern such as `/etc` is refused.
+`agent/tool_session.py` runs only what the boundary allowed and appends one JSONL line per
+approval, withdrawal, decision and execution. A decision and its execution share a random
+`call_id`.
+
+| What could go wrong after the check | What the session does |
+|---|---|
+| A path now resolves to another file | Resolves each path as the boundary did and refuses it if the result changed since the check |
+| A file or directory is swapped for a symlink | Opens the workspace once per session, then the resolved path one component at a time with `O_NOFOLLOW` from that descriptor, never through `..` |
+| A hard link points at a file outside | Reads and writes only regular files with one link; a write truncates after that check |
+| `grep` or `wc` opens a swapped path itself, or reads a file name as an option | Opens the file operands itself and hands them over as `/dev/fd/N`, linked in a fresh private directory; runs `program options -- operands` with each file named `./<path in the workspace>` |
+| A shell, the caller's environment or stdin reach the program | argv list from `/usr/bin:/bin`, no shell, `PATH` and `LC_ALL` only, no stdin, 10 s limit, output cut while it is read |
+| A session is used after it closed | Every call, approval and withdrawal is refused, so the workspace is never opened again by path |
+
+`agent/audit_check.py` reads a log file back. Every line must be canonical JSON without duplicate
+fields, and every field an enumerated word, a count, a timestamp or a random id of fixed form, so
+no line can carry an argument value as text. A count or an id could still encode one: the check
+cannot tell where a number came from. It also checks that each approval is used once or
+withdrawn, that every side effect had an approval and nothing else carried one, that an unlisted
+tool was only ever denied, and that every allowed call ran exactly once while no recorded
+execution lacks an allow. It checks the recorded events against each other and cannot show that
+the log is complete: an action that was never logged leaves nothing to check. Run it on the log of a closed session; it fails on any violation and on any approval
+left open: `python3 agent/audit_check.py <log> [argument values…]`. Argument values shorter than
+four characters are not searched for, only counted.
+
+[docs/acceptance-case.md](docs/acceptance-case.md) applies all of this to one workflow, a
+document-review assistant, including a reviewed document that carries planted instructions.
+
+```
+docker compose --profile demo run --rm review-demo
+```
+
+runs that case end to end with scripted approvals, in a container with no network, no root, no
+capabilities and a read-only image, and writes `evidence/review-demo-<UTC>-<random>.json` and the
+audit log next to it, both created new. Tests: `python3 -m unittest discover -s tests`.
+
+Known limits: a directory inside the workspace that another process moves out of it while a call
+walks through it is not caught, so the workspace still has to be a volume nothing else writes
+to. The programs `run` starts are trusted to only read what they are given. Every non-option
+command argument is checked as a path, so a grep pattern such as `/etc` is refused, and a `run`
+call may name each file only once. An argument that starts with `-` before any `--` is an option
+wherever it stands, so `wc notes.txt -l` counts lines.
 
 ## Status
 
-Week 1 of a five-week build: network isolation and the gateway. Next: retrieval over public
-documents (embeddings, vector store, search) inside the same network, then an agent with a
-human approval step, then an infrastructure-as-code design for the same layout on AWS.
+Done: network isolation and the gateway (week 1); the tool boundary with execution, an audit log
+file and the document-review acceptance case. Next: retrieval over public documents (embeddings,
+vector store, search) inside the same network, then a model-driven agent that calls tools through
+this boundary, then an infrastructure-as-code design for the same layout on AWS.
 
 ## How this was built
 

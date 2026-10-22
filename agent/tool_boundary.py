@@ -47,6 +47,8 @@ class Verdict:
     resolved_path: Optional[str] = None
     argv: Optional[list] = None
     approval_id: Optional[str] = None
+    # run: every non-option argument as resolved at the check, in order (grep's pattern first).
+    resolved_operands: tuple = ()
 
 
 def _object_schema(required, **properties):
@@ -76,11 +78,20 @@ LAB_TOOLS = {
 }
 
 
+def _encodable(value: str) -> bool:
+    # A lone surrogate cannot be written to a file or passed to a program.
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def matches_schema(value, schema: dict) -> bool:
     """A strict subset of JSON Schema: object, string and array of strings."""
     kind = schema.get("type")
     if kind == "string":
-        return isinstance(value, str) and len(value) <= schema.get("maxLength", MAX_STRING)
+        return isinstance(value, str) and len(value) <= schema.get("maxLength", MAX_STRING) and _encodable(value)
     if kind == "array":
         return isinstance(value, list) and all(matches_schema(item, schema["items"]) for item in value)
     if kind == "object":
@@ -98,7 +109,11 @@ def matches_schema(value, schema: dict) -> bool:
 def confine_path(raw: str, workspace: str) -> Optional[str]:
     """Resolve `raw` against the workspace; None if the real path lands outside it."""
     root = os.path.realpath(workspace)
-    resolved = os.path.realpath(os.path.join(root, raw))
+    try:
+        resolved = os.path.realpath(os.path.join(root, raw))
+    except ValueError:
+        # A NUL byte cannot name a file.
+        return None
     if resolved == root or resolved.startswith(root + os.sep):
         return resolved
     return None
@@ -143,12 +158,15 @@ def evaluate_call(call: ToolCall, tools: dict, workspace: str, approvals: dict) 
         if options is None:
             return Verdict(False, "command_not_allowed")
         operands_only = False
+        operands = []
         for arg in call.arguments["args"]:
             if not operands_only and arg.startswith("-"):
                 if arg not in options:
                     return Verdict(False, "option_not_allowed")
                 operands_only = arg == "--"
-            elif confine_path(arg, workspace) is None:
+                continue
+            operands.append(confine_path(arg, workspace))
+            if operands[-1] is None:
                 return Verdict(False, "path_outside_workspace")
         argv = [command, *call.arguments["args"]]
 
@@ -158,7 +176,14 @@ def evaluate_call(call: ToolCall, tools: dict, workspace: str, approvals: dict) 
         if approval_id is None:
             return Verdict(False, "approval_required")
 
-    return Verdict(True, "allowed", resolved_path=resolved_path, argv=argv, approval_id=approval_id)
+    return Verdict(
+        True,
+        "allowed",
+        resolved_path=resolved_path,
+        argv=argv,
+        approval_id=approval_id,
+        resolved_operands=tuple(operands) if spec.command_options else (),
+    )
 
 
 def _argument_bytes(call: ToolCall) -> int:

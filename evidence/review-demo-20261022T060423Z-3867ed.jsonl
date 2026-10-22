@@ -1,0 +1,40 @@
+{"argument_bytes": 13, "call_id": "fc5b617b013fc0ec", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "list_dir", "ts": "2026-10-22T06:04:23.436+00:00"}
+{"call_id": "fc5b617b013fc0ec", "event": "executed", "ok": true, "output_bytes": 36, "tool": "list_dir", "ts": "2026-10-22T06:04:23.436+00:00"}
+{"argument_bytes": 31, "call_id": "f7ea0f7b3d492126", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_file", "ts": "2026-10-22T06:04:23.436+00:00"}
+{"call_id": "f7ea0f7b3d492126", "event": "executed", "ok": true, "output_bytes": 213, "tool": "read_file", "ts": "2026-10-22T06:04:23.437+00:00"}
+{"argument_bytes": 28, "call_id": "62ce20858daed5c5", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_file", "ts": "2026-10-22T06:04:23.437+00:00"}
+{"call_id": "62ce20858daed5c5", "event": "executed", "ok": true, "output_bytes": 370, "tool": "read_file", "ts": "2026-10-22T06:04:23.437+00:00"}
+{"argument_bytes": 97, "call_id": "af0b1dbb4433fb90", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "run", "ts": "2026-10-22T06:04:23.437+00:00"}
+{"call_id": "af0b1dbb4433fb90", "event": "executed", "exit_code": 0, "ok": true, "output_bytes": 256, "tool": "run", "ts": "2026-10-22T06:04:23.443+00:00"}
+{"argument_bytes": 73, "call_id": "fe233ce3ae7a65b3", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "run", "ts": "2026-10-22T06:04:23.443+00:00"}
+{"call_id": "fe233ce3ae7a65b3", "event": "executed", "exit_code": 1, "ok": true, "output_bytes": 2, "tool": "run", "ts": "2026-10-22T06:04:23.446+00:00"}
+{"argument_bytes": 76, "call_id": "11a11381e27cbea5", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "run", "ts": "2026-10-22T06:04:23.446+00:00"}
+{"call_id": "11a11381e27cbea5", "event": "executed", "exit_code": 0, "ok": true, "output_bytes": 59, "tool": "run", "ts": "2026-10-22T06:04:23.448+00:00"}
+{"argument_bytes": 86, "call_id": "bfec46927075c688", "decision": "deny", "event": "decision", "reason": "approval_required", "tool": "write_file", "ts": "2026-10-22T06:04:23.449+00:00"}
+{"approval_id": "ad663e540db7ac0e", "argument_bytes": 86, "event": "approved", "tool": "write_file", "ts": "2026-10-22T06:04:23.449+00:00"}
+{"approval_id": "ad663e540db7ac0e", "argument_bytes": 86, "call_id": "b07eb6a8e0ff0629", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "write_file", "ts": "2026-10-22T06:04:23.449+00:00"}
+{"call_id": "b07eb6a8e0ff0629", "event": "executed", "ok": true, "output_bytes": 0, "tool": "write_file", "ts": "2026-10-22T06:04:23.449+00:00"}
+{"approval_id": "ca4a8444053b7a59", "argument_bytes": 57, "event": "approved", "tool": "write_file", "ts": "2026-10-22T06:04:23.449+00:00"}
+{"approval_id": "04680e06a57dfdae", "argument_bytes": 86, "event": "approved", "tool": "write_file", "ts": "2026-10-22T06:04:23.450+00:00"}
+{"argument_bytes": 59, "call_id": "cde5e066090afd2c", "decision": "deny", "event": "decision", "reason": "approval_required", "tool": "write_file", "ts": "2026-10-22T06:04:23.450+00:00"}
+{"approval_id": "ca4a8444053b7a59", "event": "withdrawn", "tool": "write_file", "ts": "2026-10-22T06:04:23.450+00:00"}
+{"approval_id": "04680e06a57dfdae", "event": "withdrawn", "tool": "write_file", "ts": "2026-10-22T06:04:23.450+00:00"}
+{"approval_id": "121067abc22f5f18", "argument_bytes": 73, "event": "approved", "tool": "write_file", "ts": "2026-10-22T06:04:23.450+00:00"}
+{"approval_id": "121067abc22f5f18", "argument_bytes": 73, "call_id": "922f2c0b368c3b1b", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "write_file", "ts": "2026-10-22T06:04:23.450+00:00"}
+{"call_id": "922f2c0b368c3b1b", "event": "executed", "ok": true, "output_bytes": 0, "tool": "write_file", "ts": "2026-10-22T06:04:23.451+00:00"}
+{"argument_bytes": 73, "call_id": "7d966e9ca97e85cd", "decision": "deny", "event": "decision", "reason": "approval_required", "tool": "write_file", "ts": "2026-10-22T06:04:23.451+00:00"}
+{"approval_id": "b97cea071f959f76", "argument_bytes": 57, "event": "approved", "tool": "write_file", "ts": "2026-10-22T06:04:23.451+00:00"}
+{"approval_id": "b97cea071f959f76", "event": "withdrawn", "tool": "write_file", "ts": "2026-10-22T06:04:23.451+00:00"}
+{"argument_bytes": 57, "call_id": "92958b4dc0ea1d7f", "decision": "deny", "event": "decision", "reason": "approval_required", "tool": "write_file", "ts": "2026-10-22T06:04:23.451+00:00"}
+{"approval_id": "486a912bea1c0d6d", "argument_bytes": 30, "event": "approved", "tool": "read_file", "ts": "2026-10-22T06:04:23.452+00:00"}
+{"argument_bytes": 30, "call_id": "ed87a587c0da2647", "decision": "deny", "event": "decision", "reason": "path_outside_workspace", "tool": "read_file", "ts": "2026-10-22T06:04:23.452+00:00"}
+{"approval_id": "86509ea526bd37c0", "argument_bytes": 61, "event": "approved", "tool": "run", "ts": "2026-10-22T06:04:23.452+00:00"}
+{"argument_bytes": 61, "call_id": "26b38452c28ea220", "decision": "deny", "event": "decision", "reason": "path_outside_workspace", "tool": "run", "ts": "2026-10-22T06:04:23.452+00:00"}
+{"approval_id": "d6db488e2c4263de", "argument_bytes": 54, "event": "approved", "tool": "write_file", "ts": "2026-10-22T06:04:23.452+00:00"}
+{"argument_bytes": 54, "call_id": "f258547171c0ee2f", "decision": "deny", "event": "decision", "reason": "path_outside_workspace", "tool": "write_file", "ts": "2026-10-22T06:04:23.452+00:00"}
+{"approval_id": "486a912bea1c0d6d", "event": "withdrawn", "tool": "read_file", "ts": "2026-10-22T06:04:23.452+00:00"}
+{"approval_id": "86509ea526bd37c0", "event": "withdrawn", "tool": "run", "ts": "2026-10-22T06:04:23.453+00:00"}
+{"approval_id": "d6db488e2c4263de", "event": "withdrawn", "tool": "write_file", "ts": "2026-10-22T06:04:23.453+00:00"}
+{"argument_bytes": 59, "call_id": "ddc9364fcf66c19f", "decision": "deny", "event": "decision", "reason": "command_not_allowed", "tool": "run", "ts": "2026-10-22T06:04:23.453+00:00"}
+{"argument_bytes": 140, "call_id": "fdae5c84f541f150", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "run", "ts": "2026-10-22T06:04:23.453+00:00"}
+{"call_id": "fdae5c84f541f150", "event": "executed", "exit_code": 1, "ok": true, "output_bytes": 2, "tool": "run", "ts": "2026-10-22T06:04:23.455+00:00"}

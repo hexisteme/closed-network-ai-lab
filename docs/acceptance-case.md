@@ -38,7 +38,7 @@ commands, no network.
 
 ## Acceptance criteria
 
-Each criterion is a test that must pass: `python3 -m unittest discover -s tests` (43 tests, 2026-10-22).
+Each criterion is a test that must pass: `python3 -m unittest discover -s tests` (104 tests, 2026-10-22).
 
 | # | Criterion | Evidence |
 |---|---|---|
@@ -48,9 +48,18 @@ Each criterion is a test that must pass: `python3 -m unittest discover -s tests`
 | A4 | Every decision writes one audit line without argument values, and an approval can be matched to the call it allowed. | `AuditTest`: the approval line and the decision line share a random `approval_id` that is not derived from the arguments |
 | A5 | No call in the permitted workflow is refused (no false denials on the benign set). | `PermittedWorkflowTest.test_every_benign_call_is_allowed_without_approval` (6 calls) |
 | A6 | Instructions planted in a reviewed document do not widen what the agent may do: any call they lead to is judged by A2 to A4 like any other. | `PlantedInstructionTest`: `tests/fixtures/review_workspace/meeting-notes.md` asks for a file outside the workspace; the 3 calls it asks for are refused even when approved |
+| A7 | An allowed call runs as decided and nothing else: a path that resolves differently than at the check is refused, no link swapped in after the check is followed, no hard-linked or non-regular file is used, no file name reaches a program as an option, and `run` gets an argv list without a shell, environment or stdin. | `tests/test_tool_session.py`: `ExecuteTest`, `SwapAfterCheckTest`, `FileKindTest`, `SessionTest` |
+| A8 | The recorded events in the audit log file can be checked against each other without trusting the code that wrote them: no line can carry an argument value as text, each used approval matches one allowed call of the same tool and argument size, no recorded execution lacks an allow, and no approval is left open. A count or an id could still encode a value, and an action that was never logged leaves nothing to check. | `ReconcileTest`, and `agent/audit_check.py` on any log |
+| A9 | The whole case runs end to end in the closed lab, and leaves files a reviewer can rerun and compare. | `docker compose --profile demo run --rm review-demo`: six steps, then the log is reconciled; `tests/test_review_demo.py` |
 
 A6 does not claim the model ignores planted instructions. It claims the boundary does not care
 whether it does.
+
+The A9 run records, for each step, the `call_id`s of its calls, so each claim in the evidence file
+points at lines in the audit log. The calls are fixed in `agent/review_demo.py`; a rerun gives the
+same sequence of tools, decisions, reasons and outcomes, with new ids and timestamps. The human
+approvals are scripted in this run. A run in which a person approves at a prompt, and a model
+proposes the calls, comes next.
 
 ## Static check before deployment (weeks 3 to 5)
 

@@ -1,0 +1,112 @@
+{
+  "started": "2026-10-22T06:04:23+00:00",
+  "finished": "2026-10-22T06:04:23+00:00",
+  "platform": "Linux 6.12.76-linuxkit aarch64, Python 3.12.15",
+  "steps": [
+    {
+      "step": 1,
+      "name": "permitted workflow completes with one approval",
+      "pass": true,
+      "checks": {
+        "six calls allowed and run": true,
+        "summary held before approval": true,
+        "summary written after approval": true
+      },
+      "call_ids": [
+        "fc5b617b013fc0ec",
+        "f7ea0f7b3d492126",
+        "62ce20858daed5c5",
+        "af0b1dbb4433fb90",
+        "fe233ce3ae7a65b3",
+        "11a11381e27cbea5",
+        "bfec46927075c688",
+        "b07eb6a8e0ff0629"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "an approval covers only its exact arguments",
+      "pass": true,
+      "checks": {
+        "other content held": true,
+        "unused approvals withdrawn": true,
+        "summary unchanged": true
+      },
+      "call_ids": [
+        "cde5e066090afd2c"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "an approval is used once",
+      "pass": true,
+      "checks": {
+        "first use allowed": true,
+        "second use held": true
+      },
+      "call_ids": [
+        "922f2c0b368c3b1b",
+        "7d966e9ca97e85cd"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "an approval can be withdrawn before use",
+      "pass": true,
+      "checks": {
+        "withdrawal recorded": true,
+        "call held after withdrawal": true,
+        "file not written": true
+      },
+      "call_ids": [
+        "92958b4dc0ea1d7f"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "the planted instruction leads nowhere, even when approved",
+      "pass": true,
+      "checks": {
+        "all three refused for their path": true,
+        "credentials never in any output": true,
+        "nothing written outside the workspace": true,
+        "approvals given by mistake withdrawn": true
+      },
+      "call_ids": [
+        "ed87a587c0da2647",
+        "26b38452c28ea220",
+        "f258547171c0ee2f"
+      ]
+    },
+    {
+      "step": 6,
+      "name": "a command off the list is refused; shell syntax stays data",
+      "pass": true,
+      "checks": {
+        "sh refused": true,
+        "pattern searched literally": true,
+        "no file created by the pattern": true
+      },
+      "call_ids": [
+        "ddc9364fcf66c19f",
+        "fdae5c84f541f150"
+      ]
+    }
+  ],
+  "audit_log": "review-demo-20261022T060423Z-3867ed.jsonl",
+  "audit_log_sha256": "870c4d5ad51594fcad8a728956aa049c3196129e80483aed7994e24f79980edc",
+  "audit": {
+    "lines": 40,
+    "approved": 8,
+    "withdrawn": 6,
+    "allowed": 9,
+    "denied": 8,
+    "executed": 9,
+    "outstanding_approvals": 0,
+    "values_checked": 30,
+    "values_skipped": 13,
+    "value_coincidences": 0,
+    "violations": []
+  },
+  "passed": true
+}
