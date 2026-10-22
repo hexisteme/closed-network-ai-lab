@@ -21,7 +21,8 @@ import release  # noqa: E402
 from model_gateway import load_gateway_policy  # noqa: E402
 from release import (  # noqa: E402
     ReleaseError,
-    SwitchNotLogged,
+    SwitchIncomplete,
+    archive_switch_log,
     active_release_id,
     compare_pins,
     load_release,
@@ -135,10 +136,11 @@ class SwitchReleaseTest(unittest.TestCase):
 
     def test_a_record_lost_after_the_switch_is_reported_as_unlogged_not_refused(self):
         self.audit.write_text(json.dumps({"action": "activate", "from": "r2", "to": "r1"}) + "\n", encoding="utf-8")
-        with mock.patch.object(release, "_append_record", side_effect=OSError("disk full")):
-            with self.assertRaises(SwitchNotLogged) as caught:
+        with mock.patch.object(release, "_write_line", side_effect=OSError("disk full")):
+            with self.assertRaises(SwitchIncomplete) as caught:
                 switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
         self.assertEqual((caught.exception.previous, caught.exception.target), ("r1", "r2"))
+        self.assertFalse(caught.exception.logged)
         self.assertEqual(active_release_id(self.dir), "r2")
         with self.assertRaisesRegex(ReleaseError, "ends at r1"):
             rollback_release(self.dir, self.audit, reason="the log does not know r2")
@@ -146,7 +148,7 @@ class SwitchReleaseTest(unittest.TestCase):
 
     def test_the_command_line_separates_an_unlogged_switch_from_a_refusal(self):
         err = io.StringIO()
-        with mock.patch.object(release, "_append_record", side_effect=OSError("disk full")), \
+        with mock.patch.object(release, "_write_line", side_effect=OSError("disk full")), \
                 contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
             code = release.main(["--releases", str(self.dir), "--log", str(self.audit), "activate", "r2", "--reason", "test"])
         self.assertEqual(code, 3)
@@ -218,7 +220,65 @@ class SwitchReleaseTest(unittest.TestCase):
         with mock.patch.object(release.os, "fsync", side_effect=fsync), \
                 mock.patch.object(release.os, "replace", side_effect=replace):
             switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
-        self.assertEqual(events, ["fsync-file", "replace", "fsync-dir", "fsync-file"])
+        # temporary pointer, rename, releases directory, log line, and the directory of the new log
+        self.assertEqual(events, ["fsync-file", "replace", "fsync-dir", "fsync-file", "fsync-dir"])
+
+    def test_a_directory_sync_failure_after_the_rename_reports_the_switch(self):
+        with mock.patch.object(release, "_sync_directory", side_effect=OSError("I/O error")):
+            with self.assertRaises(SwitchIncomplete) as caught:
+                switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
+        self.assertIn("releases directory", str(caught.exception))
+        self.assertFalse(caught.exception.logged)
+        self.assertEqual(active_release_id(self.dir), "r2")
+
+    def test_a_line_written_but_not_synced_is_reported_as_written(self):
+        real_fsync, calls = os.fsync, []
+
+        def fsync(fd):
+            calls.append(fd)
+            if len(calls) == 3:  # temporary pointer, releases directory, then the log line
+                raise OSError("I/O error")
+            real_fsync(fd)
+
+        err = io.StringIO()
+        with mock.patch.object(release.os, "fsync", side_effect=fsync), \
+                contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            code = release.main(["--releases", str(self.dir), "--log", str(self.audit), "activate", "r2", "--reason", "test"])
+        self.assertEqual(code, 3)
+        self.assertIn("the log line was written", err.getvalue())
+        self.assertEqual([r["to"] for r in self.records()], ["r2"])
+        rollback_release(self.dir, self.audit, reason="the line is there")
+        self.assertEqual(active_release_id(self.dir), "r1")
+
+    def test_text_that_is_not_utf8_is_a_named_refusal(self):
+        self.audit.write_bytes(b"\xff\xfe\n")
+        with self.assertRaisesRegex(ReleaseError, "UTF-8"):
+            rollback_release(self.dir, self.audit, reason="bad bytes")
+        (self.dir / "r2.json").write_bytes(b"\xff")
+        with self.assertRaises(ReleaseError):
+            load_release(self.dir, "r2")
+        (self.dir / "ACTIVE").write_bytes(b"\xff\n")
+        with self.assertRaises(ReleaseError):
+            active_release_id(self.dir)
+
+    def test_archiving_a_damaged_log_lets_a_new_history_start(self):
+        damaged = json.dumps({"action": "activate", "from": "r1", "to": "r2"})[:-4] + "\n"
+        self.audit.write_text(damaged, encoding="utf-8")
+        archived = archive_switch_log(self.dir, self.audit)
+        self.assertEqual(archived.read_text(encoding="utf-8"), damaged)
+        self.assertFalse(self.audit.exists())
+        with self.assertRaises(ReleaseError):
+            rollback_release(self.dir, self.audit, reason="no history yet")
+        switch_release(self.dir, "r2", self.audit, action="activate", reason="new history")
+        rollback_release(self.dir, self.audit, reason="back")
+        self.assertEqual(active_release_id(self.dir), "r1")
+
+    def test_the_command_line_creates_a_missing_log_directory(self):
+        log = self.dir / "new" / "logs" / "switches.jsonl"
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = release.main(["--releases", str(self.dir), "--log", str(log), "activate", "r2", "--reason", "test"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(log.read_text(encoding="utf-8"))["to"], "r2")
 
 
 class ComparePinsTest(unittest.TestCase):

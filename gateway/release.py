@@ -4,11 +4,12 @@ A release is one JSON file, releases/<id>.json, naming the models the gateway ma
 to, each pinned to the digest of the weights installed on the lab host. releases/ACTIVE
 holds the id the gateway loads at its next start. A switch holds a lock on the releases
 directory, validates the target, replaces ACTIVE in one rename and appends one line to the
-switch log, syncing both before it returns; rollback returns to the "from" of the newest log
-line, and refuses when that line does not end at the active release. Prompts and the tool
+switch log, syncing both before it returns; a failure after the rename is reported as a switch
+that happened. Rollback returns to the "from" of the newest log line, and refuses when that line
+does not end at the active release; archive-log moves a damaged log aside. Prompts and the tool
 policy live in code and roll back with git; Terraform changes are outside this mechanism.
 
-Usage (on the host): python gateway/release.py status | check [id] | activate <id> --reason TEXT | rollback --reason TEXT
+Usage (on the host): python gateway/release.py status | check [id] | activate <id> --reason TEXT | rollback --reason TEXT | archive-log
 Then restart the gateway so it loads the new release: docker compose restart model-gateway
 Standard library only.
 """
@@ -39,12 +40,12 @@ class ReleaseError(Exception):
     """A release that cannot be loaded or switched to."""
 
 
-class SwitchNotLogged(ReleaseError):
-    """ACTIVE was replaced but its switch log line was not written."""
+class SwitchIncomplete(ReleaseError):
+    """ACTIVE was replaced, and a later step of the switch failed. `logged` says whether the log line was written."""
 
-    def __init__(self, previous: str, target: str, cause: Exception):
-        super().__init__(f"switched {previous} -> {target} but the switch log was not written: {cause}")
-        self.previous, self.target = previous, target
+    def __init__(self, previous: str, target: str, step: str, logged: bool, cause: Exception):
+        super().__init__(f"switched {previous} -> {target}, but could not {step}: {cause}")
+        self.previous, self.target, self.step, self.logged = previous, target, step, logged
 
 
 def validate_release(data, release_id: str) -> list:
@@ -84,7 +85,7 @@ def load_release(releases_dir, release_id: str) -> dict:
     path = _release_path(releases_dir, release_id)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:  # ValueError covers bad JSON and bytes that are not UTF-8
         raise ReleaseError(f"cannot read release {release_id}: {exc}") from exc
     problems = validate_release(data, release_id)
     if problems:
@@ -95,7 +96,7 @@ def load_release(releases_dir, release_id: str) -> dict:
 def active_release_id(releases_dir) -> str:
     try:
         release_id = (Path(releases_dir) / POINTER).read_text(encoding="utf-8").strip()
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise ReleaseError(f"no active release in {releases_dir}: {exc}") from exc
     _release_path(releases_dir, release_id)
     return release_id
@@ -132,7 +133,7 @@ def _sync_directory(directory) -> None:
 
 def _write_pointer(releases_dir, release_id: str) -> None:
     """Replace ACTIVE in one rename, so a reader sees the old id or the new one, never a partial file.
-    The directory is synced after the rename so the new pointer survives a crash."""
+    A failure here leaves ACTIVE as it was; the caller syncs the directory after the rename."""
     fd, tmp = tempfile.mkstemp(prefix=".ACTIVE-", dir=releases_dir)
     try:
         # mkstemp makes the file 0600; the release files are readable, and so is the pointer.
@@ -145,15 +146,13 @@ def _write_pointer(releases_dir, release_id: str) -> None:
     except BaseException:
         os.unlink(tmp)
         raise
-    _sync_directory(releases_dir)
 
 
-def _append_record(log, record: dict) -> None:
-    """Write one line to the unbuffered log and sync it, so nothing is left to flush at close."""
+def _write_line(log, record: dict) -> None:
+    """Write one line to the unbuffered log, so nothing is left to flush at close."""
     view = memoryview((json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8"))
     while view:
         view = view[log.write(view):]
-    os.fsync(log.fileno())
 
 
 @contextmanager
@@ -175,9 +174,11 @@ def _switch(releases_dir, current: str, release_id: str, audit_path, action: str
         raise ReleaseError(f"{release_id} is already active; nothing to switch")
     load_release(releases_dir, release_id)
     digest = hashlib.sha256(_release_path(releases_dir, release_id).read_bytes()).hexdigest()
+    log_created = not Path(audit_path).exists()
     # Opened before the pointer moves: a log that cannot be opened stops the switch with nothing changed.
     with open(audit_path, "ab", buffering=0) as log:
         _write_pointer(releases_dir, release_id)
+        # ACTIVE now names release_id; any failure from here on is reported as a switch that happened.
         record = {
             "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "action": action,
@@ -186,10 +187,18 @@ def _switch(releases_dir, current: str, release_id: str, audit_path, action: str
             "release_sha256": digest,
             "reason": reason,
         }
+        step, written = "sync the releases directory", False
         try:
-            _append_record(log, record)
+            _sync_directory(releases_dir)
+            step = "write the switch log line"
+            _write_line(log, record)
+            step, written = "sync the switch log", True
+            os.fsync(log.fileno())
+            if log_created:
+                step = "sync the directory of the new switch log"
+                _sync_directory(Path(audit_path).parent)
         except OSError as exc:
-            raise SwitchNotLogged(current, release_id, exc) from exc
+            raise SwitchIncomplete(current, release_id, step, written, exc) from exc
     return record
 
 
@@ -221,6 +230,8 @@ def previous_release_id(audit_path, current: str) -> str:
         lines = Path(audit_path).read_text(encoding="utf-8").splitlines()
     except OSError as exc:
         raise ReleaseError(f"no switch log to roll back from: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise ReleaseError(f"the switch log is not UTF-8 text: {exc}") from exc
     records = [_switch_record(line, number) for number, line in enumerate(lines, start=1)]
     if not records:
         raise ReleaseError("the switch log is empty; nothing to roll back to")
@@ -235,6 +246,32 @@ def rollback_release(releases_dir, audit_path, reason: str) -> dict:
         current = active_release_id(releases_dir)
         target = previous_release_id(audit_path, current)
         return _switch(releases_dir, current, target, audit_path, action="rollback", reason=reason)
+
+
+def archive_switch_log(releases_dir, audit_path) -> Path:
+    """Move the switch log aside, under the switch lock, so a damaged history stops blocking rollback.
+    The next switch starts a new log; until then rollback has nothing to return to."""
+    source = Path(audit_path)
+    with _switch_lock(releases_dir):
+        if not source.exists():
+            raise ReleaseError(f"no switch log at {source}")
+        target = source.with_name(f"{source.name}.{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}.archived")
+        if target.exists():
+            raise ReleaseError(f"{target} already exists")
+        os.replace(source, target)
+        _sync_directory(source.parent)
+    return target
+
+
+def _make_directories(path: Path) -> None:
+    """mkdir -p that syncs each new directory's parent, so a new log's directory survives a crash."""
+    missing = []
+    while not path.exists():
+        missing.append(path)
+        path = path.parent
+    for directory in reversed(missing):
+        directory.mkdir()
+        _sync_directory(directory.parent)
 
 
 def fetch_installed_tags(upstream: str) -> dict:
@@ -257,6 +294,7 @@ def main(argv=None) -> int:
     activate.add_argument("--reason", required=True)
     back = sub.add_parser("rollback")
     back.add_argument("--reason", required=True)
+    sub.add_parser("archive-log")
     args = parser.parse_args(argv)
 
     try:
@@ -271,13 +309,21 @@ def main(argv=None) -> int:
                 print(f"FAIL  {p['model']}: {p['problem']} pinned={p['pinned'][:12]} installed={(p['installed'] or '-')[:12]}")
             print(f"{release_id}: {'pins match the installed weights' if not problems else f'{len(problems)} problem(s)'}")
             return 0 if not problems else 1
-        Path(args.log).parent.mkdir(parents=True, exist_ok=True)
+        if args.command == "archive-log":
+            print(f"switch log archived to {archive_switch_log(args.releases, args.log)}; rollback starts from the next switch")
+            return 0
+        _make_directories(Path(args.log).parent)
         if args.command == "activate":
             record = switch_release(args.releases, args.release_id, args.log, action="activate", reason=args.reason)
         else:
             record = rollback_release(args.releases, args.log, reason=args.reason)
-    except SwitchNotLogged as exc:
-        print(f"{exc}\nrollback refuses until a release is chosen with activate", file=sys.stderr)
+    except SwitchIncomplete as exc:
+        if exc.logged:
+            note = "the log line was written; that it survives a crash is unconfirmed"
+        else:
+            note = ("the log has no complete line for this switch, so rollback refuses; choose a release with "
+                    "activate, or run archive-log first if the log now ends in a partial line")
+        print(f"{exc}\n{note}\nrestart the gateway to serve {exc.target}", file=sys.stderr)
         return 3
     except (ReleaseError, urlerror.URLError, OSError) as exc:
         print(f"refused: {exc}", file=sys.stderr)

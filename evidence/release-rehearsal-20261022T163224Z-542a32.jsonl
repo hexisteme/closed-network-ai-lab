@@ -1,0 +1,2 @@
+{"ts": "2026-10-22T16:32:24.635+00:00", "action": "activate", "from": "r1", "to": "r2", "release_sha256": "eef505ba0e9358ced3f6814d2191cda2742e579f382d029470925d434ad62fad", "reason": "rehearsal: deploy r2"}
+{"ts": "2026-10-22T16:32:25.147+00:00", "action": "rollback", "from": "r2", "to": "r1", "release_sha256": "9cbbfb2a35357d5a1e1b66756bc82a1d885c3c22a767333ac02a09bdf0877c04", "reason": "rehearsal: checks failed on r2"}
