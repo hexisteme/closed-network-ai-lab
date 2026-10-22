@@ -69,10 +69,13 @@ def append_audit(audit_path: str, record: dict) -> None:
 
 def load_gateway_policy(env) -> tuple:
     """Return (release id, allowlist). With RELEASE_DIR set, the active release decides and a
-    missing or invalid release stops the gateway; otherwise LAB_MODELS does, with no release id."""
-    if env.get("RELEASE_DIR"):
-        from release import active_release_id, load_release, release_models
+    missing or invalid release, or an empty RELEASE_DIR, stops the gateway; otherwise LAB_MODELS
+    does, with no release id."""
+    if "RELEASE_DIR" in env:
+        from release import ReleaseError, active_release_id, load_release, release_models
 
+        if not env["RELEASE_DIR"].strip():
+            raise ReleaseError("RELEASE_DIR is set but empty")
         release_id = active_release_id(env["RELEASE_DIR"])
         return release_id, release_models(load_release(env["RELEASE_DIR"], release_id))
     return None, parse_allowlist(env.get("LAB_MODELS", ""))

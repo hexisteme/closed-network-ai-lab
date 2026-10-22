@@ -117,6 +117,16 @@ def call(url: str, method: str, path: str, payload=None):
         return exc.code, json.loads(exc.read() or b"{}"), exc.headers.get("X-Lab-Release")
 
 
+# Computed from the installed listing; every other check is one request through the gateway.
+LOCAL_CHECKS = frozenset({"pinned_weights_installed"})
+
+
+def audit_matches(serving: str, lines: list, expected_requests: int) -> bool:
+    """A step's gateway audit has one line per request the checks made, each naming the release served."""
+    return (expected_requests > 0 and len(lines) == expected_requests
+            and all(json.loads(line).get("release") == serving for line in lines))
+
+
 def check_serving_release(gateway_url: str, expected: str, release_data: dict, installed: dict) -> list:
     """The acceptance checks after a switch. Each is a dict with name, expect, passed, observed."""
     checks = []
@@ -202,6 +212,7 @@ def run_rehearsal(releases_src, installed_path, evidence_dir) -> dict:
                 "checks": checks,
                 "gateway_requests": len(lines),
                 "gateway_audit_releases": sorted({json.loads(line)["release"] for line in lines}),
+                "audit_matches": audit_matches(serving, lines, sum(c["name"] not in LOCAL_CHECKS for c in checks)),
             })
 
         with LocalServer(ModelHostStandIn) as host:
@@ -230,6 +241,7 @@ def run_rehearsal(releases_src, installed_path, evidence_dir) -> dict:
                    and not by_step["bad_release"]["checks_passed"]
                    and by_step["after_rollback"]["checks_passed"]
                    and [s["serving_release"] for s in steps] == [good_id, bad_id, good_id]
+                   and all(s["audit_matches"] for s in steps)
                    and [r["action"] for r in switches] == ["activate", "rollback"]
                    and final == good_id),
         "evidence_file": f"{name}.json",

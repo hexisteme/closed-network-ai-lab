@@ -1,8 +1,15 @@
 """Releases of the gateway configuration: validation, atomic switching, rollback and the rehearsal."""
 
+import contextlib
+import fcntl
+import io
 import json
+import os
+import stat
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -14,6 +21,7 @@ import release  # noqa: E402
 from model_gateway import load_gateway_policy  # noqa: E402
 from release import (  # noqa: E402
     ReleaseError,
+    SwitchNotLogged,
     active_release_id,
     compare_pins,
     load_release,
@@ -21,7 +29,7 @@ from release import (  # noqa: E402
     switch_release,
     validate_release,
 )
-from release_rehearsal import run_rehearsal  # noqa: E402
+from release_rehearsal import audit_matches, run_rehearsal  # noqa: E402
 
 RELEASES = LAB / "releases"
 INSTALLED = LAB / "tests" / "fixtures" / "ollama-tags-20261023.json"
@@ -99,8 +107,9 @@ class SwitchReleaseTest(unittest.TestCase):
             with self.assertRaises(OSError):
                 switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
         self.assertEqual(active_release_id(self.dir), "r1")
-        self.assertEqual(sorted(p.name for p in self.dir.iterdir()), ["ACTIVE", "r1.json", "r2.json"])
-        self.assertFalse(self.audit.exists())
+        # The log is opened before the pointer moves, so it exists, but nothing was recorded and no temporary file is left.
+        self.assertEqual(sorted(p.name for p in self.dir.iterdir()), ["ACTIVE", "audit.jsonl", "r1.json", "r2.json"])
+        self.assertEqual(self.audit.read_text(encoding="utf-8"), "")
 
     def test_rollback_returns_to_the_release_that_was_active_before(self):
         switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
@@ -118,6 +127,98 @@ class SwitchReleaseTest(unittest.TestCase):
         (self.dir / "ACTIVE").write_text("../r1\n", encoding="utf-8")
         with self.assertRaises(ReleaseError):
             active_release_id(self.dir)
+
+    def test_a_log_that_cannot_be_opened_stops_the_switch_before_the_pointer_moves(self):
+        with self.assertRaises(OSError):
+            switch_release(self.dir, "r2", self.dir / "missing" / "audit.jsonl", action="activate", reason="test")
+        self.assertEqual(active_release_id(self.dir), "r1")
+
+    def test_a_record_lost_after_the_switch_is_reported_as_unlogged_not_refused(self):
+        self.audit.write_text(json.dumps({"action": "activate", "from": "r2", "to": "r1"}) + "\n", encoding="utf-8")
+        with mock.patch.object(release, "_append_record", side_effect=OSError("disk full")):
+            with self.assertRaises(SwitchNotLogged) as caught:
+                switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
+        self.assertEqual((caught.exception.previous, caught.exception.target), ("r1", "r2"))
+        self.assertEqual(active_release_id(self.dir), "r2")
+        with self.assertRaisesRegex(ReleaseError, "ends at r1"):
+            rollback_release(self.dir, self.audit, reason="the log does not know r2")
+        self.assertEqual(active_release_id(self.dir), "r2")
+
+    def test_the_command_line_separates_an_unlogged_switch_from_a_refusal(self):
+        err = io.StringIO()
+        with mock.patch.object(release, "_append_record", side_effect=OSError("disk full")), \
+                contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            code = release.main(["--releases", str(self.dir), "--log", str(self.audit), "activate", "r2", "--reason", "test"])
+        self.assertEqual(code, 3)
+        self.assertIn("switched r1 -> r2", err.getvalue())
+        self.assertNotIn("refused", err.getvalue())
+
+    def test_activating_the_active_release_changes_nothing(self):
+        switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
+        with self.assertRaisesRegex(ReleaseError, "already active"):
+            switch_release(self.dir, "r2", self.audit, action="activate", reason="again")
+        self.assertEqual(len(self.records()), 1)
+        rollback_release(self.dir, self.audit, reason="back")
+        self.assertEqual(active_release_id(self.dir), "r1")
+
+    def test_rollback_uses_only_the_newest_record_and_it_must_match_the_pointer(self):
+        rows = [{"action": "activate", "from": "r1", "to": "r2"}, {"action": "activate", "from": "r2", "to": "r3"}]
+        self.audit.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        (self.dir / "ACTIVE").write_text("r2\n", encoding="utf-8")
+        with self.assertRaisesRegex(ReleaseError, "ends at r3"):
+            rollback_release(self.dir, self.audit, reason="contradictory tail")
+        self.assertEqual(active_release_id(self.dir), "r2")
+
+    def test_a_corrupt_switch_log_is_refused_by_name_before_anything_changes(self):
+        good = json.dumps({"action": "activate", "from": "r1", "to": "r2"})
+        cases = {
+            "truncated line": good + "\n" + good[:-5] + "\n",
+            "blank line": good + "\n\n",
+            "not an object": good + "\n[]\n",
+            "missing from": good + "\n" + json.dumps({"action": "activate", "to": "r2"}) + "\n",
+            "switch to itself": json.dumps({"action": "activate", "from": "r2", "to": "r2"}) + "\n",
+            "bad id": json.dumps({"action": "activate", "from": "../r1", "to": "r2"}) + "\n",
+        }
+        (self.dir / "ACTIVE").write_text("r2\n", encoding="utf-8")
+        for name, text in cases.items():
+            with self.subTest(name):
+                self.audit.write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(ReleaseError, "switch log line"):
+                    rollback_release(self.dir, self.audit, reason=name)
+                self.assertEqual(active_release_id(self.dir), "r2")
+                self.assertEqual(self.audit.read_text(encoding="utf-8"), text)
+
+    def test_a_switch_waits_for_one_already_in_progress(self):
+        holder = os.open(self.dir, os.O_RDONLY)
+        fcntl.flock(holder, fcntl.LOCK_EX)
+        worker = threading.Thread(target=switch_release, args=(self.dir, "r2", self.audit),
+                                  kwargs={"action": "activate", "reason": "queued"})
+        try:
+            worker.start()
+            time.sleep(0.3)
+            self.assertEqual(active_release_id(self.dir), "r1")
+        finally:
+            fcntl.flock(holder, fcntl.LOCK_UN)
+            os.close(holder)
+        worker.join(timeout=5)
+        self.assertEqual(active_release_id(self.dir), "r2")
+
+    def test_the_pointer_and_the_record_are_synced_before_the_switch_returns(self):
+        events = []
+        real_fsync, real_replace = os.fsync, os.replace
+
+        def fsync(fd):
+            events.append("fsync-dir" if stat.S_ISDIR(os.fstat(fd).st_mode) else "fsync-file")
+            real_fsync(fd)
+
+        def replace(src, dst):
+            events.append("replace")
+            real_replace(src, dst)
+
+        with mock.patch.object(release.os, "fsync", side_effect=fsync), \
+                mock.patch.object(release.os, "replace", side_effect=replace):
+            switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
+        self.assertEqual(events, ["fsync-file", "replace", "fsync-dir", "fsync-file"])
 
 
 class ComparePinsTest(unittest.TestCase):
@@ -148,6 +249,12 @@ class GatewayPolicyTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as empty:
             with self.assertRaises(ReleaseError):
                 load_gateway_policy({"RELEASE_DIR": empty, "LAB_MODELS": "qwen3:4b"})
+
+    def test_an_empty_release_dir_is_refused_rather_than_ignored(self):
+        for value in ("", "  "):
+            with self.subTest(repr(value)):
+                with self.assertRaises(ReleaseError):
+                    load_gateway_policy({"RELEASE_DIR": value, "LAB_MODELS": "llama3:8b"})
 
     def test_without_releases_the_environment_allowlist_still_works(self):
         self.assertEqual(load_gateway_policy({"LAB_MODELS": "qwen3:4b"}), (None, frozenset({"qwen3:4b"})))
@@ -184,12 +291,28 @@ class RehearsalTest(unittest.TestCase):
             self.assertEqual([s["serving_release"] for s in evidence["steps"]], ["r1", "r2", "r1"])
             self.assertEqual([r["action"] for r in evidence["switches"]], ["activate", "rollback"])
             self.assertEqual(evidence["final_active_release"], "r1")
+            for step in evidence["steps"]:
+                self.assertEqual(step["gateway_audit_releases"], [step["serving_release"]])
+                self.assertTrue(step["audit_matches"], step["step"])
             self.assertTrue(evidence["passed"])
 
             written = json.loads((Path(evidence_dir) / evidence["evidence_file"]).read_text(encoding="utf-8"))
             self.assertEqual(written["switch_log_sha256"], evidence["switch_log_sha256"])
             self.assertTrue((Path(evidence_dir) / evidence["switch_log"]).is_file())
         self.assertEqual(snapshot(RELEASES), before)
+
+
+class AuditMatchesTest(unittest.TestCase):
+    def lines(self, *releases):
+        return [json.dumps({"release": r, "path": "/api/chat"}) for r in releases]
+
+    def test_every_request_must_name_the_serving_release(self):
+        self.assertTrue(audit_matches("r1", self.lines("r1", "r1"), expected_requests=2))
+        self.assertFalse(audit_matches("r1", self.lines("r1", "r2"), expected_requests=2))
+
+    def test_the_request_count_must_match(self):
+        self.assertFalse(audit_matches("r1", self.lines("r1"), expected_requests=2))
+        self.assertFalse(audit_matches("r1", [], expected_requests=0))
 
 
 if __name__ == "__main__":

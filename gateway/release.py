@@ -2,10 +2,11 @@
 
 A release is one JSON file, releases/<id>.json, naming the models the gateway may forward
 to, each pinned to the digest of the weights installed on the lab host. releases/ACTIVE
-holds the id the gateway serves. A switch validates the target, replaces ACTIVE in one
-rename and appends one line to the switch log; rollback returns to the release that was
-active before the current one. Prompts and the tool policy live in code and roll back with
-git; Terraform changes are outside this mechanism.
+holds the id the gateway loads at its next start. A switch holds a lock on the releases
+directory, validates the target, replaces ACTIVE in one rename and appends one line to the
+switch log, syncing both before it returns; rollback returns to the "from" of the newest log
+line, and refuses when that line does not end at the active release. Prompts and the tool
+policy live in code and roll back with git; Terraform changes are outside this mechanism.
 
 Usage (on the host): python gateway/release.py status | check [id] | activate <id> --reason TEXT | rollback --reason TEXT
 Then restart the gateway so it loads the new release: docker compose restart model-gateway
@@ -13,12 +14,14 @@ Standard library only.
 """
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
 import re
 import sys
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib import error as urlerror
@@ -34,6 +37,14 @@ DIGEST = re.compile(r"[0-9a-f]{64}")
 
 class ReleaseError(Exception):
     """A release that cannot be loaded or switched to."""
+
+
+class SwitchNotLogged(ReleaseError):
+    """ACTIVE was replaced but its switch log line was not written."""
+
+    def __init__(self, previous: str, target: str, cause: Exception):
+        super().__init__(f"switched {previous} -> {target} but the switch log was not written: {cause}")
+        self.previous, self.target = previous, target
 
 
 def validate_release(data, release_id: str) -> list:
@@ -111,8 +122,17 @@ def compare_pins(data: dict, installed_tags: dict) -> list:
     return problems
 
 
+def _sync_directory(directory) -> None:
+    fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def _write_pointer(releases_dir, release_id: str) -> None:
-    """Replace ACTIVE in one rename, so a reader sees the old id or the new one, never a partial file."""
+    """Replace ACTIVE in one rename, so a reader sees the old id or the new one, never a partial file.
+    The directory is synced after the rename so the new pointer survives a crash."""
     fd, tmp = tempfile.mkstemp(prefix=".ACTIVE-", dir=releases_dir)
     try:
         # mkstemp makes the file 0600; the release files are readable, and so is the pointer.
@@ -125,43 +145,96 @@ def _write_pointer(releases_dir, release_id: str) -> None:
     except BaseException:
         os.unlink(tmp)
         raise
+    _sync_directory(releases_dir)
+
+
+def _append_record(log, record: dict) -> None:
+    """Write one line to the unbuffered log and sync it, so nothing is left to flush at close."""
+    view = memoryview((json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8"))
+    while view:
+        view = view[log.write(view):]
+    os.fsync(log.fileno())
+
+
+@contextmanager
+def _switch_lock(releases_dir):
+    """One switch at a time: reading the current state, switching and logging happen under one lock."""
+    try:
+        fd = os.open(releases_dir, os.O_RDONLY)
+    except OSError as exc:
+        raise ReleaseError(f"cannot open releases directory {releases_dir}: {exc}") from exc
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)  # closing the descriptor releases the lock
+
+
+def _switch(releases_dir, current: str, release_id: str, audit_path, action: str, reason: str) -> dict:
+    if release_id == current:
+        raise ReleaseError(f"{release_id} is already active; nothing to switch")
+    load_release(releases_dir, release_id)
+    digest = hashlib.sha256(_release_path(releases_dir, release_id).read_bytes()).hexdigest()
+    # Opened before the pointer moves: a log that cannot be opened stops the switch with nothing changed.
+    with open(audit_path, "ab", buffering=0) as log:
+        _write_pointer(releases_dir, release_id)
+        record = {
+            "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "action": action,
+            "from": current,
+            "to": release_id,
+            "release_sha256": digest,
+            "reason": reason,
+        }
+        try:
+            _append_record(log, record)
+        except OSError as exc:
+            raise SwitchNotLogged(current, release_id, exc) from exc
+    return record
 
 
 def switch_release(releases_dir, release_id: str, audit_path, action: str, reason: str) -> dict:
     """Make release_id the active release and append the switch to the log. Returns the log record."""
-    current = active_release_id(releases_dir)
-    load_release(releases_dir, release_id)
-    digest = hashlib.sha256(_release_path(releases_dir, release_id).read_bytes()).hexdigest()
-    _write_pointer(releases_dir, release_id)
-    record = {
-        "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-        "action": action,
-        "from": current,
-        "to": release_id,
-        "release_sha256": digest,
-        "reason": reason,
-    }
-    with open(audit_path, "a", encoding="utf-8") as fh:
-        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    with _switch_lock(releases_dir):
+        return _switch(releases_dir, active_release_id(releases_dir), release_id, audit_path, action, reason)
+
+
+def _switch_record(line: str, number: int) -> dict:
+    try:
+        record = json.loads(line)
+    except json.JSONDecodeError:
+        record = None
+    if not isinstance(record, dict) or record.get("action") not in ("activate", "rollback"):
+        raise ReleaseError(f"switch log line {number} is not a switch record")
+    for key in ("from", "to"):
+        if not isinstance(record.get(key), str) or not RELEASE_ID.fullmatch(record[key]):
+            raise ReleaseError(f"switch log line {number}: {key!r} is not a release id")
+    if record["from"] == record["to"]:
+        raise ReleaseError(f"switch log line {number} switches {record['to']} to itself")
     return record
 
 
 def previous_release_id(audit_path, current: str) -> str:
-    """The release that was active before `current`, from the newest switch that made it active."""
+    """The release the newest switch left. Every line must be a switch record, and the newest one
+    must end at `current`; otherwise the log does not describe how `current` became active."""
     try:
         lines = Path(audit_path).read_text(encoding="utf-8").splitlines()
     except OSError as exc:
         raise ReleaseError(f"no switch log to roll back from: {exc}") from exc
-    for line in reversed(lines):
-        record = json.loads(line)
-        if record.get("to") == current:
-            return record["from"]
-    raise ReleaseError(f"the switch log never activated {current}; nothing to roll back to")
+    records = [_switch_record(line, number) for number, line in enumerate(lines, start=1)]
+    if not records:
+        raise ReleaseError("the switch log is empty; nothing to roll back to")
+    if records[-1]["to"] != current:
+        raise ReleaseError(f"the switch log ends at {records[-1]['to']} but the active release is {current}; "
+                           "choose a release with activate")
+    return records[-1]["from"]
 
 
 def rollback_release(releases_dir, audit_path, reason: str) -> dict:
-    target = previous_release_id(audit_path, active_release_id(releases_dir))
-    return switch_release(releases_dir, target, audit_path, action="rollback", reason=reason)
+    with _switch_lock(releases_dir):
+        current = active_release_id(releases_dir)
+        target = previous_release_id(audit_path, current)
+        return _switch(releases_dir, current, target, audit_path, action="rollback", reason=reason)
 
 
 def fetch_installed_tags(upstream: str) -> dict:
@@ -203,6 +276,9 @@ def main(argv=None) -> int:
             record = switch_release(args.releases, args.release_id, args.log, action="activate", reason=args.reason)
         else:
             record = rollback_release(args.releases, args.log, reason=args.reason)
+    except SwitchNotLogged as exc:
+        print(f"{exc}\nrollback refuses until a release is chosen with activate", file=sys.stderr)
+        return 3
     except (ReleaseError, urlerror.URLError, OSError) as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2

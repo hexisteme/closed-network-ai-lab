@@ -1,0 +1,230 @@
+{
+  "run_at": "20261022T162223Z",
+  "kind": "release-rehearsal",
+  "installed_listing": {
+    "file": "ollama-tags-20261023.json",
+    "sha256": "5e434bf6091dfe9fc6ead6435adaed11538aae0d73beef226fe7f0052ce442d3"
+  },
+  "good_release": "r1",
+  "bad_release": "r2",
+  "bad_change": "bge-m3:latest removed from the allowlist",
+  "steps": [
+    {
+      "step": "baseline",
+      "serving_release": "r1",
+      "checks_passed": true,
+      "failed_checks": [],
+      "checks": [
+        {
+          "name": "serving_release",
+          "expect": "the gateway reports release r1",
+          "passed": true,
+          "observed": "r1"
+        },
+        {
+          "name": "pinned_weights_installed",
+          "expect": "every pinned digest equals the installed weights",
+          "passed": true,
+          "observed": []
+        },
+        {
+          "name": "chat:qwen3:4b",
+          "expect": "200 through the gateway",
+          "passed": true,
+          "observed": {
+            "status": 200,
+            "error": null
+          }
+        },
+        {
+          "name": "chat:gemma3:4b",
+          "expect": "200 through the gateway",
+          "passed": true,
+          "observed": {
+            "status": 200,
+            "error": null
+          }
+        },
+        {
+          "name": "embed:bge-m3:latest",
+          "expect": "200 through the gateway",
+          "passed": true,
+          "observed": {
+            "status": 200,
+            "error": null
+          }
+        },
+        {
+          "name": "cloud_model_denied",
+          "expect": "403 cloud_model_blocked",
+          "passed": true,
+          "observed": 403
+        },
+        {
+          "name": "model_download_denied",
+          "expect": "403 path_not_allowed",
+          "passed": true,
+          "observed": 403
+        }
+      ],
+      "gateway_requests": 6,
+      "gateway_audit_releases": [
+        "r1"
+      ],
+      "audit_matches": true
+    },
+    {
+      "step": "bad_release",
+      "serving_release": "r2",
+      "checks_passed": false,
+      "failed_checks": [
+        "embed:bge-m3:latest"
+      ],
+      "checks": [
+        {
+          "name": "serving_release",
+          "expect": "the gateway reports release r2",
+          "passed": true,
+          "observed": "r2"
+        },
+        {
+          "name": "pinned_weights_installed",
+          "expect": "every pinned digest equals the installed weights",
+          "passed": true,
+          "observed": []
+        },
+        {
+          "name": "chat:qwen3:4b",
+          "expect": "200 through the gateway",
+          "passed": true,
+          "observed": {
+            "status": 200,
+            "error": null
+          }
+        },
+        {
+          "name": "chat:gemma3:4b",
+          "expect": "200 through the gateway",
+          "passed": true,
+          "observed": {
+            "status": 200,
+            "error": null
+          }
+        },
+        {
+          "name": "embed:bge-m3:latest",
+          "expect": "200 through the gateway",
+          "passed": false,
+          "observed": {
+            "status": 403,
+            "error": "model_not_allowed"
+          }
+        },
+        {
+          "name": "cloud_model_denied",
+          "expect": "403 cloud_model_blocked",
+          "passed": true,
+          "observed": 403
+        },
+        {
+          "name": "model_download_denied",
+          "expect": "403 path_not_allowed",
+          "passed": true,
+          "observed": 403
+        }
+      ],
+      "gateway_requests": 6,
+      "gateway_audit_releases": [
+        "r2"
+      ],
+      "audit_matches": true
+    },
+    {
+      "step": "after_rollback",
+      "serving_release": "r1",
+      "checks_passed": true,
+      "failed_checks": [],
+      "checks": [
+        {
+          "name": "serving_release",
+          "expect": "the gateway reports release r1",
+          "passed": true,
+          "observed": "r1"
+        },
+        {
+          "name": "pinned_weights_installed",
+          "expect": "every pinned digest equals the installed weights",
+          "passed": true,
+          "observed": []
+        },
+        {
+          "name": "chat:qwen3:4b",
+          "expect": "200 through the gateway",
+          "passed": true,
+          "observed": {
+            "status": 200,
+            "error": null
+          }
+        },
+        {
+          "name": "chat:gemma3:4b",
+          "expect": "200 through the gateway",
+          "passed": true,
+          "observed": {
+            "status": 200,
+            "error": null
+          }
+        },
+        {
+          "name": "embed:bge-m3:latest",
+          "expect": "200 through the gateway",
+          "passed": true,
+          "observed": {
+            "status": 200,
+            "error": null
+          }
+        },
+        {
+          "name": "cloud_model_denied",
+          "expect": "403 cloud_model_blocked",
+          "passed": true,
+          "observed": 403
+        },
+        {
+          "name": "model_download_denied",
+          "expect": "403 path_not_allowed",
+          "passed": true,
+          "observed": 403
+        }
+      ],
+      "gateway_requests": 6,
+      "gateway_audit_releases": [
+        "r1"
+      ],
+      "audit_matches": true
+    }
+  ],
+  "switches": [
+    {
+      "ts": "2026-10-22T16:22:23.774+00:00",
+      "action": "activate",
+      "from": "r1",
+      "to": "r2",
+      "release_sha256": "eef505ba0e9358ced3f6814d2191cda2742e579f382d029470925d434ad62fad",
+      "reason": "rehearsal: deploy r2"
+    },
+    {
+      "ts": "2026-10-22T16:22:24.283+00:00",
+      "action": "rollback",
+      "from": "r2",
+      "to": "r1",
+      "release_sha256": "9cbbfb2a35357d5a1e1b66756bc82a1d885c3c22a767333ac02a09bdf0877c04",
+      "reason": "rehearsal: checks failed on r2"
+    }
+  ],
+  "switch_log": "release-rehearsal-20261022T162223Z-536749.jsonl",
+  "switch_log_sha256": "d4df41d6624f485bb1dad27d7099eea2e22ae6ed5587feb1c8ef1068661238f5",
+  "final_active_release": "r1",
+  "passed": true,
+  "evidence_file": "release-rehearsal-20261022T162223Z-536749.json"
+}

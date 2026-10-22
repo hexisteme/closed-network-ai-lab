@@ -29,18 +29,18 @@ the owner's decisions and how the case could be wrong are in
 | Claim | Checked by | Latest result |
 |---|---|---|
 | No route out of the lab network; the gateway is the only way to the models | `egress-check` | [11 of 11 checks](evidence/egress-check-20261022T161153Z.json), with the gateway serving release r1 |
-| A1 to A6: a document-review workflow completes with one approval; every call that breaks the configured rules (tool list, schema, workspace path, command and option lists, approval) is refused with a named reason; an approval covers one call with exact arguments; audit lines carry no argument values; instructions planted in a document do not widen what the agent may do | `tests/test_review_workflow.py`, `tests/test_tool_boundary.py` | 179 tests pass on Linux in the lab image (2026-10-23) |
+| A1 to A6: a document-review workflow completes with one approval; every call that breaks the configured rules (tool list, schema, workspace path, command and option lists, approval) is refused with a named reason; an approval covers one call with exact arguments; audit lines carry no argument values; instructions planted in a document do not widen what the agent may do | `tests/test_review_workflow.py`, `tests/test_tool_boundary.py` | 190 tests pass on Linux in the lab image (2026-10-23) |
 | A7, A8: an allowed call runs as decided and nothing else; the audit log file can be checked without trusting the code that wrote it | `tests/test_tool_session.py`, `agent/audit_check.py` | as above |
 | A9: the case runs end to end in the closed lab with scripted approvals | `review-demo` | [6 steps, 40-line audit log, no violations](evidence/review-demo-20261022T060423Z-3867ed.json) |
 | A10: with qwen3:4b proposing the calls, the boundary holds whatever it proposes | `review-agent`, `tests/test_review_agent.py` | [no prompt defense](evidence/review-agent-20261022T063744Z-b34ff4.json): 9 calls refused, job not done · [one defense sentence](evidence/review-agent-20261022T063848Z-a73fbe.json): job done with one approval |
 | A11: retrieval over public law text stays inside the network and its quality is measured | `rag-eval`, `tests/test_rag.py` | [recall@5 0.958 over 24 questions](evidence/rag-eval-20261022T081909Z-06dbc0.json) |
 | A12: a LangGraph agent keeps the same boundary and pauses for approval before writing | `rag-agent`, `tests/test_rag_agent.py` | [one pause, one approval, every cited article retrieved](evidence/rag-agent-20261022T082220Z-30c48f.json) |
 | A13: the same layout on AWS is code whose claims are offline assertions | `infra/aws/check.sh`, `infra/aws/tests/break_the_design.py` | 8 of 8 test runs pass, [no trivy HIGH or CRITICAL finding](evidence/iac-check-20261022T120119Z.json), 33 of 33 deliberate breaks caught |
-| A14: the gateway serves one versioned release of its model allowlist, and a bad release can be rolled back | `gateway/release_rehearsal.py`, `tests/test_release.py` | [r1 passes 7 checks, r2 fails the embedding check, rollback to r1 passes all 7 again](evidence/release-rehearsal-20261022T160225Z-7aeb8f.json) |
+| A14: the gateway serves one versioned release of its model allowlist, and a bad release can be rolled back | `gateway/release_rehearsal.py`, `tests/test_release.py` | [r1 passes 7 checks, r2 fails the embedding check, rollback to r1 passes all 7 again; every gateway request is audited under the release served](evidence/release-rehearsal-20261022T162223Z-536749.json) |
 
 Approvals in the A10 and A12 runs were piped by the operator; a run approved at a terminal is still
 to be done. Results without an evidence file in this repository are the author's report of runs on
-2026-10-22 and 2026-10-23: the 179 tests on Linux (10-23), the eight Terraform runs and the 33 breaks, the tool versions in
+2026-10-22 and 2026-10-23: the 190 tests on Linux (10-23), the eight Terraform runs and the 33 breaks, the tool versions in
 the network check, and the tool-calling comparison under the review agent.
 
 ## Run
@@ -301,9 +301,11 @@ it did see, so the person approving the memo still has to read it against the so
 
 The gateway forwards only to models on its allowlist. That allowlist is now a release: one file,
 `releases/<id>.json`, naming each allowed model and pinning it to the digest of the weights
-installed on the lab host. `releases/ACTIVE` names the release the gateway serves; the gateway
-reports it in an `X-Lab-Release` header and in every audit line, and refuses to start if the
-active release is missing or invalid.
+installed on the lab host. `releases/ACTIVE` names the release the gateway loads at its next
+start. The running gateway reports the release it loaded in an `X-Lab-Release` header and in every
+audit line, and refuses to start if the active release is missing or invalid. The pinned digests
+are recorded expectations: `release.py check` compares them with the installed weights, but
+neither a switch nor the gateway's start enforces them.
 
 ```sh
 python3 gateway/release.py status
@@ -317,14 +319,24 @@ The rehearsal (`python3 gateway/release_rehearsal.py`, A14) runs the real gatewa
 front of a stand-in model host built from a captured `/api/tags` listing. Release r1 passes 7
 checks. r2 is r1 with `bge-m3` dropped: it passes validation, so the switch accepts it, and the
 embedding check then fails with 403. Rollback restores r1 and all 7 checks pass again. The switch
-log has one line per switch with the release's SHA-256, and the gateway's audit lines name the
-release served at each step ([evidence](evidence/release-rehearsal-20261022T160225Z-7aeb8f.json)).
+log has one line per switch with the release's SHA-256. Each step makes six requests through the
+gateway, and the rehearsal fails unless there are six audit lines and each names the release
+served ([evidence](evidence/release-rehearsal-20261022T162223Z-536749.json)).
+
+A switch holds a lock on `releases/`, and it syncs the pointer and its log line before it returns.
+It refuses to activate the release that is already active. If the log line cannot be written after
+the pointer has moved, the command exits 3 and says so rather than reporting a refusal. Rollback
+returns to the release the newest log line left. It refuses a log with a line that is not a switch
+record, and a log whose newest line does not end at the active release; a release is then chosen
+with `activate`.
 
 What it does not cover: prompts and the tool policy live in code and roll back with git; Terraform
 changes have no rollback; a switch cannot restore weights overwritten on the host, it can only
 report the mismatch; rollback is manual; and a second rollback goes back to the release just left.
-The switch log is written to `logs/`, which is not committed; `releases/ACTIVE` is the committed
-record of what is deployed.
+The switch log is written to `logs/`, which is not committed. `releases/ACTIVE` in git records
+the release the gateway will load at its next start; what a running gateway serves is what it
+reports. The rehearsal exercises the configuration against a stand-in model host; it is not a
+production deployment and not an automated rollback.
 
 ## The same layout on AWS
 
