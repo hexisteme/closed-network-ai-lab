@@ -21,6 +21,7 @@ import release  # noqa: E402
 from model_gateway import load_gateway_policy  # noqa: E402
 from release import (  # noqa: E402
     ReleaseError,
+    ArchiveIncomplete,
     SwitchIncomplete,
     archive_switch_log,
     active_release_id,
@@ -220,8 +221,14 @@ class SwitchReleaseTest(unittest.TestCase):
         with mock.patch.object(release.os, "fsync", side_effect=fsync), \
                 mock.patch.object(release.os, "replace", side_effect=replace):
             switch_release(self.dir, "r2", self.audit, action="activate", reason="test")
-        # temporary pointer, rename, releases directory, log line, and the directory of the new log
-        self.assertEqual(events, ["fsync-file", "replace", "fsync-dir", "fsync-file", "fsync-dir"])
+        # temporary pointer, rename, releases directory, log line, then the log's directory and its parent
+        self.assertEqual(events, ["fsync-file", "replace", "fsync-dir", "fsync-file", "fsync-dir", "fsync-dir"])
+        events.clear()
+        with mock.patch.object(release.os, "fsync", side_effect=fsync), \
+                mock.patch.object(release.os, "replace", side_effect=replace):
+            switch_release(self.dir, "r1", self.audit, action="activate", reason="the log exists now")
+        # A log that already exists still has its directories synced, so a retry after a failed sync is covered.
+        self.assertEqual(events, ["fsync-file", "replace", "fsync-dir", "fsync-file", "fsync-dir", "fsync-dir"])
 
     def test_a_directory_sync_failure_after_the_rename_reports_the_switch(self):
         with mock.patch.object(release, "_sync_directory", side_effect=OSError("I/O error")):
@@ -273,12 +280,48 @@ class SwitchReleaseTest(unittest.TestCase):
         rollback_release(self.dir, self.audit, reason="back")
         self.assertEqual(active_release_id(self.dir), "r1")
 
-    def test_the_command_line_creates_a_missing_log_directory(self):
-        log = self.dir / "new" / "logs" / "switches.jsonl"
+    def test_the_command_line_creates_one_missing_log_directory(self):
+        log = self.dir / "logs" / "switches.jsonl"
         with contextlib.redirect_stdout(io.StringIO()):
             code = release.main(["--releases", str(self.dir), "--log", str(log), "activate", "r2", "--reason", "test"])
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(log.read_text(encoding="utf-8"))["to"], "r2")
+
+    def test_a_log_directory_whose_parent_is_missing_is_refused_before_the_switch(self):
+        log = self.dir / "new" / "logs" / "switches.jsonl"
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code = release.main(["--releases", str(self.dir), "--log", str(log), "activate", "r2", "--reason", "test"])
+        self.assertEqual(code, 2)
+        self.assertIn("refused", err.getvalue())
+        self.assertEqual(active_release_id(self.dir), "r1")
+
+    def test_a_log_directory_created_meanwhile_is_not_an_error(self):
+        log = self.dir / "logs" / "switches.jsonl"
+        real_mkdir = Path.mkdir
+
+        def mkdir(path, *args, **kwargs):
+            real_mkdir(path)  # another process creates it first
+            return real_mkdir(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "mkdir", mkdir), contextlib.redirect_stdout(io.StringIO()):
+            code = release.main(["--releases", str(self.dir), "--log", str(log), "activate", "r2", "--reason", "test"])
+        self.assertEqual(code, 0)
+
+    def test_an_archive_whose_sync_fails_is_reported_as_archived(self):
+        self.audit.write_text(json.dumps({"action": "activate", "from": "r1", "to": "r2"}) + "\n", encoding="utf-8")
+        with mock.patch.object(release, "_sync_directory", side_effect=OSError("I/O error")):
+            with self.assertRaises(ArchiveIncomplete) as caught:
+                archive_switch_log(self.dir, self.audit)
+        self.assertTrue(caught.exception.target.is_file())
+        self.assertFalse(self.audit.exists())
+        err = io.StringIO()
+        self.audit.write_text(json.dumps({"action": "activate", "from": "r1", "to": "r2"}) + "\n", encoding="utf-8")
+        with mock.patch.object(release, "_sync_directory", side_effect=OSError("I/O error")), \
+                contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            code = release.main(["--releases", str(self.dir), "--log", str(self.audit), "archive-log"])
+        self.assertEqual(code, 3)
+        self.assertIn("archived to", err.getvalue())
+        self.assertNotIn("refused", err.getvalue())
 
 
 class ComparePinsTest(unittest.TestCase):

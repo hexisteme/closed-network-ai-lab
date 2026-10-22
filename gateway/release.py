@@ -40,6 +40,14 @@ class ReleaseError(Exception):
     """A release that cannot be loaded or switched to."""
 
 
+class ArchiveIncomplete(ReleaseError):
+    """The switch log was moved aside, and syncing its directory failed."""
+
+    def __init__(self, target: Path, cause: Exception):
+        super().__init__(f"archived to {target}, but could not sync the log's directory: {cause}")
+        self.target = target
+
+
 class SwitchIncomplete(ReleaseError):
     """ACTIVE was replaced, and a later step of the switch failed. `logged` says whether the log line was written."""
 
@@ -174,7 +182,7 @@ def _switch(releases_dir, current: str, release_id: str, audit_path, action: str
         raise ReleaseError(f"{release_id} is already active; nothing to switch")
     load_release(releases_dir, release_id)
     digest = hashlib.sha256(_release_path(releases_dir, release_id).read_bytes()).hexdigest()
-    log_created = not Path(audit_path).exists()
+    log_dir = Path(audit_path).resolve().parent
     # Opened before the pointer moves: a log that cannot be opened stops the switch with nothing changed.
     with open(audit_path, "ab", buffering=0) as log:
         _write_pointer(releases_dir, release_id)
@@ -194,9 +202,10 @@ def _switch(releases_dir, current: str, release_id: str, audit_path, action: str
             _write_line(log, record)
             step, written = "sync the switch log", True
             os.fsync(log.fileno())
-            if log_created:
-                step = "sync the directory of the new switch log"
-                _sync_directory(Path(audit_path).parent)
+            # Every time, not only when the log is new: a retry after a failed sync is then covered too.
+            step = "sync the switch log's directory and its parent"
+            _sync_directory(log_dir)
+            _sync_directory(log_dir.parent)
         except OSError as exc:
             raise SwitchIncomplete(current, release_id, step, written, exc) from exc
     return record
@@ -259,19 +268,11 @@ def archive_switch_log(releases_dir, audit_path) -> Path:
         if target.exists():
             raise ReleaseError(f"{target} already exists")
         os.replace(source, target)
-        _sync_directory(source.parent)
+        try:
+            _sync_directory(source.parent)
+        except OSError as exc:
+            raise ArchiveIncomplete(target, exc) from exc
     return target
-
-
-def _make_directories(path: Path) -> None:
-    """mkdir -p that syncs each new directory's parent, so a new log's directory survives a crash."""
-    missing = []
-    while not path.exists():
-        missing.append(path)
-        path = path.parent
-    for directory in reversed(missing):
-        directory.mkdir()
-        _sync_directory(directory.parent)
 
 
 def fetch_installed_tags(upstream: str) -> dict:
@@ -312,11 +313,15 @@ def main(argv=None) -> int:
         if args.command == "archive-log":
             print(f"switch log archived to {archive_switch_log(args.releases, args.log)}; rollback starts from the next switch")
             return 0
-        _make_directories(Path(args.log).parent)
+        # One level only, so the switch syncs every directory it may have created: the log's and its parent.
+        Path(args.log).parent.mkdir(exist_ok=True)
         if args.command == "activate":
             record = switch_release(args.releases, args.release_id, args.log, action="activate", reason=args.reason)
         else:
             record = rollback_release(args.releases, args.log, reason=args.reason)
+    except ArchiveIncomplete as exc:
+        print(f"{exc}\nthe log was moved; that the move survives a crash is unconfirmed", file=sys.stderr)
+        return 3
     except SwitchIncomplete as exc:
         if exc.logged:
             note = "the log line was written; that it survives a crash is unconfirmed"

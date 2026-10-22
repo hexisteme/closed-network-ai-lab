@@ -39,7 +39,7 @@ commands, no network.
 
 ## Acceptance criteria
 
-Each criterion is a test that must pass: `docker compose --profile test run --rm lab-test` (195 tests
+Each criterion is a test that must pass: `docker compose --profile test run --rm lab-test` (198 tests
 on Linux in the lab image with no network, 2026-10-23). On the host, `python3 -m unittest discover -s
 tests` skips the 10 that need LangGraph. A13 has its own runner, `infra/aws/check.sh`.
 

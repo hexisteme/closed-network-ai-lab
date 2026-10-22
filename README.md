@@ -29,7 +29,7 @@ the owner's decisions and how the case could be wrong are in
 | Claim | Checked by | Latest result |
 |---|---|---|
 | No route out of the lab network; the gateway is the only way to the models | `egress-check` | [11 of 11 checks](evidence/egress-check-20261022T161153Z.json), with the gateway serving release r1 |
-| A1 to A6: a document-review workflow completes with one approval; every call that breaks the configured rules (tool list, schema, workspace path, command and option lists, approval) is refused with a named reason; an approval covers one call with exact arguments; audit lines carry no argument values; instructions planted in a document do not widen what the agent may do | `tests/test_review_workflow.py`, `tests/test_tool_boundary.py` | 195 tests pass on Linux in the lab image (2026-10-23) |
+| A1 to A6: a document-review workflow completes with one approval; every call that breaks the configured rules (tool list, schema, workspace path, command and option lists, approval) is refused with a named reason; an approval covers one call with exact arguments; audit lines carry no argument values; instructions planted in a document do not widen what the agent may do | `tests/test_review_workflow.py`, `tests/test_tool_boundary.py` | 198 tests pass on Linux in the lab image (2026-10-23) |
 | A7, A8: an allowed call runs as decided and nothing else; the audit log file can be checked without trusting the code that wrote it | `tests/test_tool_session.py`, `agent/audit_check.py` | as above |
 | A9: the case runs end to end in the closed lab with scripted approvals | `review-demo` | [6 steps, 40-line audit log, no violations](evidence/review-demo-20261022T060423Z-3867ed.json) |
 | A10: with qwen3:4b proposing the calls, the boundary holds whatever it proposes | `review-agent`, `tests/test_review_agent.py` | [no prompt defense](evidence/review-agent-20261022T063744Z-b34ff4.json): 9 calls refused, job not done · [one defense sentence](evidence/review-agent-20261022T063848Z-a73fbe.json): job done with one approval |
@@ -40,7 +40,7 @@ the owner's decisions and how the case could be wrong are in
 
 Approvals in the A10 and A12 runs were piped by the operator; a run approved at a terminal is still
 to be done. Results without an evidence file in this repository are the author's report of runs on
-2026-10-22 and 2026-10-23: the 195 tests on Linux (10-23), the eight Terraform runs and the 33 breaks, the tool versions in
+2026-10-22 and 2026-10-23: the 198 tests on Linux (10-23), the eight Terraform runs and the 33 breaks, the tool versions in
 the network check, and the tool-calling comparison under the review agent.
 
 ## Run
