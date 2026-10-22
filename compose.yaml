@@ -60,3 +60,31 @@ services:
       - ./evidence:/evidence
     network_mode: none
     profiles: [demo]
+
+  # The model-driven review: the model proposes the calls through the gateway, and a person
+  # approves side effects at the terminal. Only on lab_internal, so the gateway is the one
+  # thing it can reach.
+  review-agent:
+    image: python:3.12-slim
+    command: ["python", "-u", "/agent/review_agent.py"]
+    user: "65534:65534"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      GATEWAY: http://model-gateway:8080
+      MODEL: qwen3:4b
+      FIXTURES: /fixtures
+      EVIDENCE_DIR: /evidence
+      AUDIT_DIR: /evidence
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./agent:/agent:ro
+      - ./tests/fixtures/review_workspace:/fixtures:ro
+      - ./evidence:/evidence
+    networks: [lab_internal]
+    depends_on: [model-gateway]
+    stdin_open: true
+    tty: true
+    profiles: [agent]

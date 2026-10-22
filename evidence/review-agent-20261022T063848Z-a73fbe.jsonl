@@ -1,0 +1,21 @@
+{"argument_bytes": 13, "call_id": "0cf2edf3d36fc8c1", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "list_dir", "ts": "2026-10-22T06:38:50.316+00:00"}
+{"call_id": "0cf2edf3d36fc8c1", "event": "executed", "ok": true, "output_bytes": 36, "tool": "list_dir", "ts": "2026-10-22T06:38:50.317+00:00"}
+{"argument_bytes": 28, "call_id": "f205ba119999f995", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_file", "ts": "2026-10-22T06:38:52.413+00:00"}
+{"call_id": "f205ba119999f995", "event": "executed", "ok": true, "output_bytes": 370, "tool": "read_file", "ts": "2026-10-22T06:38:52.415+00:00"}
+{"argument_bytes": 31, "call_id": "695130845fff1d6d", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_file", "ts": "2026-10-22T06:38:54.185+00:00"}
+{"call_id": "695130845fff1d6d", "event": "executed", "ok": true, "output_bytes": 213, "tool": "read_file", "ts": "2026-10-22T06:38:54.186+00:00"}
+{"argument_bytes": 27, "call_id": "806f13bfa9aff15a", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_file", "ts": "2026-10-22T06:38:56.174+00:00"}
+{"call_id": "806f13bfa9aff15a", "error": "not_found", "event": "executed", "ok": false, "output_bytes": 0, "tool": "read_file", "ts": "2026-10-22T06:38:56.190+00:00"}
+{"argument_bytes": 27, "call_id": "bc7d0633ad4ded0d", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_file", "ts": "2026-10-22T06:38:59.059+00:00"}
+{"call_id": "bc7d0633ad4ded0d", "error": "not_found", "event": "executed", "ok": false, "output_bytes": 0, "tool": "read_file", "ts": "2026-10-22T06:38:59.060+00:00"}
+{"argument_bytes": 14, "call_id": "80989d7ed4c4a396", "decision": "deny", "event": "decision", "reason": "path_outside_workspace", "tool": "list_dir", "ts": "2026-10-22T06:39:01.808+00:00"}
+{"argument_bytes": 13, "call_id": "3a81a3b4d23d0bc2", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "list_dir", "ts": "2026-10-22T06:39:03.904+00:00"}
+{"call_id": "3a81a3b4d23d0bc2", "event": "executed", "ok": true, "output_bytes": 36, "tool": "list_dir", "ts": "2026-10-22T06:39:03.909+00:00"}
+{"argument_bytes": 28, "call_id": "699ae815a19d2ec1", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_file", "ts": "2026-10-22T06:39:07.083+00:00"}
+{"call_id": "699ae815a19d2ec1", "event": "executed", "ok": true, "output_bytes": 370, "tool": "read_file", "ts": "2026-10-22T06:39:07.098+00:00"}
+{"argument_bytes": 31, "call_id": "87379fe7145bbe2e", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "read_file", "ts": "2026-10-22T06:39:11.651+00:00"}
+{"call_id": "87379fe7145bbe2e", "event": "executed", "ok": true, "output_bytes": 213, "tool": "read_file", "ts": "2026-10-22T06:39:11.654+00:00"}
+{"argument_bytes": 336, "call_id": "60e906608264ca43", "decision": "deny", "event": "decision", "reason": "approval_required", "tool": "write_file", "ts": "2026-10-22T06:39:16.679+00:00"}
+{"approval_id": "b98f8c6c60b0b352", "argument_bytes": 336, "event": "approved", "tool": "write_file", "ts": "2026-10-22T06:39:16.682+00:00"}
+{"approval_id": "b98f8c6c60b0b352", "argument_bytes": 336, "call_id": "ec9fb201bfe70609", "decision": "allow", "event": "decision", "reason": "allowed", "tool": "write_file", "ts": "2026-10-22T06:39:16.683+00:00"}
+{"call_id": "ec9fb201bfe70609", "event": "executed", "ok": true, "output_bytes": 0, "tool": "write_file", "ts": "2026-10-22T06:39:16.684+00:00"}

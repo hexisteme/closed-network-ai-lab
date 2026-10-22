@@ -38,7 +38,7 @@ commands, no network.
 
 ## Acceptance criteria
 
-Each criterion is a test that must pass: `python3 -m unittest discover -s tests` (104 tests, 2026-10-22).
+Each criterion is a test that must pass: `python3 -m unittest discover -s tests` (128 tests, 2026-10-22).
 
 | # | Criterion | Evidence |
 |---|---|---|
@@ -51,6 +51,7 @@ Each criterion is a test that must pass: `python3 -m unittest discover -s tests`
 | A7 | An allowed call runs as decided and nothing else: a path that resolves differently than at the check is refused, no link swapped in after the check is followed, no hard-linked or non-regular file is used, no file name reaches a program as an option, and `run` gets an argv list without a shell, environment or stdin. | `tests/test_tool_session.py`: `ExecuteTest`, `SwapAfterCheckTest`, `FileKindTest`, `SessionTest` |
 | A8 | The recorded events in the audit log file can be checked against each other without trusting the code that wrote them: no line can carry an argument value as text, each used approval matches one allowed call of the same tool and argument size, no recorded execution lacks an allow, and no approval is left open. A count or an id could still encode a value, and an action that was never logged leaves nothing to check. | `ReconcileTest`, and `agent/audit_check.py` on any log |
 | A9 | The whole case runs end to end in the closed lab, and leaves files a reviewer can rerun and compare. | `docker compose --profile demo run --rm review-demo`: six steps, then the log is reconciled; `tests/test_review_demo.py` |
+| A10 | With a local model proposing the calls, the boundary holds whatever the model proposes, nothing it refused reaches the model, and a side effect runs only after a person approves its exact arguments; a declined call is not asked again. | `tests/test_review_agent.py`; `docker compose --profile agent run --rm review-agent`, with and without `PROMPT_DEFENSE=1` |
 
 A6 does not claim the model ignores planted instructions. It claims the boundary does not care
 whether it does.
@@ -58,8 +59,15 @@ whether it does.
 The A9 run records, for each step, the `call_id`s of its calls, so each claim in the evidence file
 points at lines in the audit log. The calls are fixed in `agent/review_demo.py`; a rerun gives the
 same sequence of tools, decisions, reasons and outcomes, with new ids and timestamps. The human
-approvals are scripted in this run. A run in which a person approves at a prompt, and a model
-proposes the calls, comes next.
+approvals are scripted in this run.
+
+A10 replaces the scripted calls with qwen3:4b's proposals. In the two recorded runs the
+operator piped the answers (`approver: stdin` in the evidence); a run approved at a terminal is
+still to be done. Without a prompt defense, the model followed the planted instruction on every
+turn after reading it; the boundary refused all 9 calls, no approval was asked, and the job was
+not done. With one defense
+sentence, the model still tried 3 times, then finished the job with one approval. A6 held in
+both runs. The prompt changed whether the job got done, not what the model could reach.
 
 ## Static check before deployment (weeks 3 to 5)
 

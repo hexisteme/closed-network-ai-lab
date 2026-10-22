@@ -4,11 +4,22 @@ import json
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "agent"))
 
+import review_demo  # noqa: E402
 from review_demo import FIXTURES, SECRET, run_demo  # noqa: E402
+
+
+class FrozenClock(datetime):
+    """Every run reads the same second, so file names differ only by their random part."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return datetime(2026, 10, 22, 6, 0, 0, tzinfo=timezone.utc)
 
 
 class ReviewDemoTest(unittest.TestCase):
@@ -34,7 +45,8 @@ class ReviewDemoTest(unittest.TestCase):
 
     def test_two_runs_into_the_same_folders_keep_separate_files(self):
         with tempfile.TemporaryDirectory() as evidence_dir, tempfile.TemporaryDirectory() as audit_dir:
-            runs = [run_demo(FIXTURES, evidence_dir, audit_dir) for _ in range(2)]
+            with mock.patch.object(review_demo, "datetime", FrozenClock):
+                runs = [run_demo(FIXTURES, evidence_dir, audit_dir) for _ in range(2)]
             self.assertNotEqual(runs[0]["audit_log"], runs[1]["audit_log"])
             self.assertEqual(len(list(Path(evidence_dir).glob("*.json"))), 2)
             for evidence in runs:
