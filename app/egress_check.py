@@ -29,6 +29,24 @@ def connect_error(host: str, port: int, timeout: float = 3.0):
         return f"{type(exc).__name__}: {exc}"
 
 
+def network_gateway_address(routes: str):
+    """Docker's gateway on this network, the first address of the subnet in /proc/net/route, or None.
+
+    Docker lets containers on an internal network reach the host on that address, so a host
+    service listening on all interfaces there would bypass the model gateway.
+    """
+    for line in routes.splitlines()[1:]:
+        fields = line.split()
+        try:
+            destination, mask = int(fields[1], 16), int(fields[7], 16)
+        except (IndexError, ValueError):
+            continue
+        if destination and mask:
+            network = socket.ntohl(destination)
+            return socket.inet_ntoa((network + 1).to_bytes(4, "big"))
+    return None
+
+
 def call_gateway(method: str, path: str, payload=None, timeout: float = 300.0):
     data = json.dumps(payload).encode() if payload is not None else None
     req = request.Request(GATEWAY + path, data=data, method=method, headers={"Content-Type": "application/json"})
@@ -95,6 +113,15 @@ def run_checks() -> list:
 
     err = connect_error("host.docker.internal", 11434)
     record(checks, "host_model_api_unreachable", "direct TCP to host Ollama fails (no gateway bypass)", err is not None, err or "connected")
+
+    try:
+        with open("/proc/net/route", encoding="ascii") as f:
+            bridge = network_gateway_address(f.read())
+    except OSError:
+        bridge = None
+    err = connect_error(bridge, 11434) if bridge else "no subnet route found"
+    record(checks, "host_model_port_closed_on_bridge", "TCP to the network's gateway address on the Ollama port fails",
+           bridge is not None and err is not None, {"address": bridge, "result": err or "connected"})
 
     record(checks, "gateway_ready", "gateway answers /api/version within 30 s", wait_for_gateway(), GATEWAY)
 

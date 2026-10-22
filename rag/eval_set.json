@@ -1,0 +1,29 @@
+{
+ "about": "Retrieval questions over the Personal Information Protection Act. Each lists the articles that answer it. Questions paraphrase rather than repeat article titles. Written by Claude (AI) from the article texts in corpus/pipa.json; not reviewed by a lawyer.",
+ "questions": [
+  {"id": "ko-01", "language": "ko", "question": "회사가 고객 정보를 목적대로 다 쓰고 나면 그 정보를 어떻게 해야 하나요?", "relevant": ["제21조"]},
+  {"id": "ko-02", "language": "ko", "question": "초등학생 회원의 정보를 받으려면 누구의 동의가 필요한가요?", "relevant": ["제22조의2"]},
+  {"id": "ko-03", "language": "ko", "question": "건강 상태나 정치적 견해 같은 정보는 어떤 경우에만 다룰 수 있나요?", "relevant": ["제23조"]},
+  {"id": "ko-04", "language": "ko", "question": "회원 가입 때 주민등록번호를 받아도 되는 경우가 있나요?", "relevant": ["제24조의2"]},
+  {"id": "ko-05", "language": "ko", "question": "매장 천장에 CCTV를 달 때 지켜야 할 것은 무엇인가요?", "relevant": ["제25조"]},
+  {"id": "ko-06", "language": "ko", "question": "고객 데이터를 해외 데이터센터로 옮겨 보관하려면 어떤 요건이 있나요?", "relevant": ["제28조의8"]},
+  {"id": "ko-07", "language": "ko", "question": "해킹으로 고객 정보가 새어 나갔다면 회사는 누구에게 무엇을 알려야 하나요?", "relevant": ["제34조"]},
+  {"id": "ko-08", "language": "ko", "question": "내 정보를 다른 회사로 보내 달라고 요구할 수 있나요?", "relevant": ["제35조의2"]},
+  {"id": "ko-09", "language": "ko", "question": "사람 개입 없이 시스템이 내린 결정을 거부하거나 설명을 요구할 수 있나요?", "relevant": ["제37조의2"]},
+  {"id": "ko-10", "language": "ko", "question": "정보가 유출됐는데 손해액을 증명하기 어려우면 얼마까지 배상을 청구할 수 있나요?", "relevant": ["제39조의2"]},
+  {"id": "ko-11", "language": "ko", "question": "이름을 가린 정보를 통계 작성에 쓸 때도 본인 동의가 필요한가요?", "relevant": ["제28조의2"]},
+  {"id": "ko-12", "language": "ko", "question": "법을 어기면 매출액의 몇 퍼센트까지 금전 제재를 받을 수 있나요?", "relevant": ["제64조의2"]},
+  {"id": "en-01", "language": "en", "question": "Can a company use customer data without consent when it is needed to carry out a contract the customer asked for?", "relevant": ["제15조"]},
+  {"id": "en-02", "language": "en", "question": "When may a company hand personal data over to another company?", "relevant": ["제17조"]},
+  {"id": "en-03", "language": "en", "question": "Who must a company name as the person in charge of protecting personal data?", "relevant": ["제31조"]},
+  {"id": "en-04", "language": "en", "question": "Does a foreign company with no office in Korea need someone to act for it locally?", "relevant": ["제31조의2"]},
+  {"id": "en-05", "language": "en", "question": "What technical and organisational safeguards must be in place so that personal data is not lost, stolen or leaked?", "relevant": ["제29조"]},
+  {"id": "en-06", "language": "en", "question": "When does a public institution have to assess the privacy risks of a new system before running it?", "relevant": ["제33조"]},
+  {"id": "en-07", "language": "en", "question": "Can a person ask a company to stop processing their personal data?", "relevant": ["제37조"]},
+  {"id": "en-08", "language": "en", "question": "How can a consumer organisation take a company to court over privacy violations on behalf of many people?", "relevant": ["제51조"]},
+  {"id": "en-09", "language": "en", "question": "What must a company disclose when it hands processing work to an outside vendor?", "relevant": ["제26조"]},
+  {"id": "en-10", "language": "en", "question": "What happens to customers' personal data when a business is sold or merged?", "relevant": ["제27조"]},
+  {"id": "en-11", "language": "en", "question": "Does a company have to publish how it handles personal data, and what must that document contain?", "relevant": ["제30조"]},
+  {"id": "en-12", "language": "en", "question": "Can a person ask for wrong information about them to be corrected or erased?", "relevant": ["제36조"]}
+ ]
+}

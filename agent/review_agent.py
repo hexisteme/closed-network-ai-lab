@@ -95,14 +95,15 @@ class ModelError(Exception):
     """The gateway or the model gave no usable answer."""
 
 
-def chat(messages: list, gateway: str = GATEWAY, model: str = MODEL, timeout: float = MODEL_TIMEOUT) -> str:
-    """One model turn through the gateway; returns the message content."""
+def chat(messages: list, gateway: str = GATEWAY, model: str = MODEL, timeout: float = MODEL_TIMEOUT,
+         schema: dict = PROPOSAL_SCHEMA) -> str:
+    """One model turn through the gateway, constrained to `schema`; returns the message content."""
     body = {
         "model": model,
         "messages": messages,
         "stream": False,
         "think": False,
-        "format": PROPOSAL_SCHEMA,
+        "format": schema,
         "options": {"temperature": 0, "num_predict": 1024},
     }
     request = urlrequest.Request(
@@ -308,14 +309,23 @@ def run_case(fixtures: str, evidence_dir: str, audit_dir: str, chat_fn, approver
     return evidence
 
 
-def main() -> int:
+def approver_mode():
+    """`stdin`, `terminal`, or None when there is no terminal and piped answers were not declared."""
     # The operator's word that answers are piped wins: it is the weaker claim.
     if os.environ.get("APPROVE_FROM_STDIN") == "1":
-        mode = "stdin"
-    elif sys.stdin.isatty():
-        mode = "terminal"
-    else:
-        print("No terminal for the approver. Run with a terminal, or set APPROVE_FROM_STDIN=1 to answer from piped input.", file=sys.stderr)
+        return "stdin"
+    if sys.stdin.isatty():
+        return "terminal"
+    return None
+
+
+NO_APPROVER = "No terminal for the approver. Run with a terminal, or set APPROVE_FROM_STDIN=1 to answer from piped input."
+
+
+def main() -> int:
+    mode = approver_mode()
+    if mode is None:
+        print(NO_APPROVER, file=sys.stderr)
         return 2
     prompt_defense = os.environ.get("PROMPT_DEFENSE") == "1"
     print(f"model {MODEL} via {GATEWAY}; approver: {mode}; prompt defense: {prompt_defense}")

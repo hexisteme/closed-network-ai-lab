@@ -1,0 +1,856 @@
+{
+ "started": "2026-10-22T08:19:09+00:00",
+ "finished": "2026-10-22T08:22:18+00:00",
+ "platform": "Linux 6.12.76-linuxkit aarch64, Python 3.12.15",
+ "embed_model": "bge-m3",
+ "answer_model": "qwen3:4b",
+ "corpus": {
+  "law": "개인정보 보호법",
+  "promulgation_number": "21445",
+  "effective": "2026-09-11",
+  "articles": 125,
+  "sha256": "1c7de2d77e9747f2a297cf78582acf2ba4d68bab9e6cfb1ee4662d9670f4119c"
+ },
+ "store": {
+  "rows": 125,
+  "search": "exact, cosine distance",
+  "results_ordered_and_distinct": true
+ },
+ "top_k": 5,
+ "articles_shown_to_the_answer_model": 3,
+ "ingest_seconds": 11.9,
+ "eval_seconds": 177.1,
+ "summary": {
+  "all": {
+   "questions": 24,
+   "recall_at_1": 0.792,
+   "recall_at_3": 0.917,
+   "recall_at_5": 0.958,
+   "mrr": 0.856,
+   "answered": 24,
+   "answer_errors": 0,
+   "answers_grounded": 0.917,
+   "answers_citing_a_relevant_article": 0.917,
+   "answers_without_citations": 0
+  },
+  "en": {
+   "questions": 12,
+   "recall_at_1": 0.75,
+   "recall_at_3": 0.917,
+   "recall_at_5": 1.0,
+   "mrr": 0.836,
+   "answered": 12,
+   "answer_errors": 0,
+   "answers_grounded": 0.917,
+   "answers_citing_a_relevant_article": 0.917,
+   "answers_without_citations": 0
+  },
+  "ko": {
+   "questions": 12,
+   "recall_at_1": 0.833,
+   "recall_at_3": 0.917,
+   "recall_at_5": 0.917,
+   "mrr": 0.875,
+   "answered": 12,
+   "answer_errors": 0,
+   "answers_grounded": 0.917,
+   "answers_citing_a_relevant_article": 0.917,
+   "answers_without_citations": 0
+  }
+ },
+ "results": [
+  {
+   "id": "ko-01",
+   "language": "ko",
+   "relevant": [
+    "제21조"
+   ],
+   "retrieved": [
+    "제27조",
+    "제18조",
+    "제34조의2",
+    "제15조",
+    "제20조"
+   ],
+   "distances": [
+    0.3958,
+    0.4021,
+    0.4111,
+    0.4137,
+    0.4213
+   ],
+   "rank": null,
+   "answer": {
+    "text": "회사는 개인정보를 목적 외의 용도로 이용하거나 제3자에게 제공하지 않아야 합니다. 이는 제18조 제1항에 따라 개인정보처리자가 개인정보를 제15조제1항에 따른 범위를 초과하여 이용하거나 제17조제1항 및 제28조의8제1항에 따른 범위를 초과하여 제3자에게 제공하지 못하도록 규정하고 있습니다.",
+    "citations": [
+     "제18조"
+    ],
+    "mentioned": [
+     "제18조",
+     "제15조",
+     "제17조",
+     "제28조의8"
+    ],
+    "cited": 1,
+    "grounded": false,
+    "hit": false
+   }
+  },
+  {
+   "id": "ko-02",
+   "language": "ko",
+   "relevant": [
+    "제22조의2"
+   ],
+   "retrieved": [
+    "제22조의2",
+    "제22조",
+    "제38조",
+    "제5조",
+    "제15조"
+   ],
+   "distances": [
+    0.3495,
+    0.4542,
+    0.4609,
+    0.4747,
+    0.4805
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "만 14세 미만 아동의 법정대리인의 동의",
+    "citations": [
+     "제22조의2"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-03",
+   "language": "ko",
+   "relevant": [
+    "제23조"
+   ],
+   "retrieved": [
+    "제23조",
+    "제58조",
+    "제32조",
+    "제26조",
+    "제24조"
+   ],
+   "distances": [
+    0.3498,
+    0.4389,
+    0.4724,
+    0.48,
+    0.4875
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "건강 상태나 정치적 견해 같은 정보는 민감정보로 분류되며, 제23조 제1항 각 호에 따라 정보주체에게 사전에 알리고 동의를 받은 경우 또는 법령에서 민감정보의 처리를 요구하거나 허용하는 경우에만 다룰 수 있습니다. 이는 제23조(민감정보의 처리 제한)에 따라 규정되었습니다.",
+    "citations": [
+     "제23조"
+    ],
+    "mentioned": [
+     "제23조"
+    ],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-04",
+   "language": "ko",
+   "relevant": [
+    "제24조의2"
+   ],
+   "retrieved": [
+    "제24조의2",
+    "제31조의2",
+    "제15조",
+    "제51조",
+    "제58조"
+   ],
+   "distances": [
+    0.3431,
+    0.4655,
+    0.4893,
+    0.4924,
+    0.4951
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "예, 회원 가입 시 주민등록번호를 받아도 되는 경우가 있습니다. 제24조의2 제3항에 따라, 개인정보처리자는 정보주체가 인터넷 홈페이지를 통하여 회원으로 가입하는 단계에서는 주민등록번호를 사용하지 아니하고도 회원으로 가입할 수 있는 방법을 제공하여야 한다. 따라서 주민등록번호를 처리하지 않는 방법을 제공해야 하며, 이 경우 회원 가입 시 주민등록번호를 받아도 되는 경우는 제외됩니다.",
+    "citations": [
+     "제24조의2"
+    ],
+    "mentioned": [
+     "제24조의2"
+    ],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-05",
+   "language": "ko",
+   "relevant": [
+    "제25조"
+   ],
+   "retrieved": [
+    "제25조",
+    "제25조의2",
+    "제75조",
+    "제64조의2",
+    "제72조"
+   ],
+   "distances": [
+    0.4866,
+    0.5435,
+    0.5463,
+    0.5897,
+    0.6057
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "매장 천장에 CCTV를 달 때는 고정형 영상정보처리기기의 설치 제한에 따라 제25조에 따라 설치 및 운영 조건을 충족해야 합니다. 이는 제25조 제1항, 제2항, 제3항, 제4항, 제5항, 제6항, 제7항, 제8항을 포함합니다. 또한, 제25조의2에 따라 이동형 영상정보처리기기의 경우에도 적용될 수 있으나, 매장 천장에 설치하는 경우 일반적으로 고정형 영상정보처리기기로 간주됩니다.",
+    "citations": [
+     "제25조"
+    ],
+    "mentioned": [
+     "제25조",
+     "제25조의2"
+    ],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-06",
+   "language": "ko",
+   "relevant": [
+    "제28조의8"
+   ],
+   "retrieved": [
+    "제28조의8",
+    "제28조의9",
+    "제28조의10",
+    "제27조",
+    "제14조"
+   ],
+   "distances": [
+    0.3497,
+    0.3899,
+    0.441,
+    0.4608,
+    0.4711
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "고객 데이터를 해외 데이터센터로 옮겨 보관하려면, 개인정보처리자는 다음 요건을 충족해야 합니다. 먼저, 정보주체로부터 국외 이전에 관한 별도의 동의를 받거나, 법률·조약·국제협정에 따라 특별한 규정이 있는 경우, 또는 정보주체와의 계약 체결을 위하여 필요한 경우 등 제28조의8 제1항의 각 호에 해당하는 경우에 한해 국외 이전이 가능합니다. 또한, 이전받는 자가 개인정보 보호 인증을 받은 경우, 이전되는 국가의 개인정보 보호 수준이 이 법에 따른 수준과 동등하다고 보호위원회가 인정한 경우 등 제28조의8 제4항 및 제5항의 조건을 충족해야 합니다.",
+    "citations": [
+     "제28조의8"
+    ],
+    "mentioned": [
+     "제28조의8"
+    ],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-07",
+   "language": "ko",
+   "relevant": [
+    "제34조"
+   ],
+   "retrieved": [
+    "제34조",
+    "제34조의2",
+    "제39조",
+    "제27조",
+    "제39조의2"
+   ],
+   "distances": [
+    0.385,
+    0.432,
+    0.4414,
+    0.4444,
+    0.4517
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "해킹으로 고객 정보가 새어 나갔다면 회사는 정보주체에게 제34조 제1항 각 호의 사항을 알려야 합니다. 이는 개인정보 유출등이 발생했을 때 정보주체에게 유출된 개인정보의 항목, 유출 시점 및 경위, 피해 최소화 방법, 대응 조치, 피해 구제 절차, 법적 권리 등 구체적인 정보를 통지해야 한다는 내용을 포함합니다. 제34조의2는 추가적으로 공중에 노출된 개인정보를 삭제하거나 차단해야 한다는 점을 규정하지만, 주요 통지 대상은 정보주체입니다.",
+    "citations": [
+     "제34조"
+    ],
+    "mentioned": [
+     "제34조",
+     "제34조의2"
+    ],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-08",
+   "language": "ko",
+   "relevant": [
+    "제35조의2"
+   ],
+   "retrieved": [
+    "제27조",
+    "제35조의2",
+    "제28조의8",
+    "제37조",
+    "제18조"
+   ],
+   "distances": [
+    0.3664,
+    0.3716,
+    0.399,
+    0.4252,
+    0.4307
+   ],
+   "rank": 2,
+   "answer": {
+    "text": "예, 정보주체는 개인정보 처리 능력 등을 고려하여 대통령령으로 정하는 기준에 해당하는 개인정보처리자에 대하여 다음 각 호의 요건을 모두 충족하는 개인정보를 자신에게로 전송할 것을 요구할 수 있습니다.",
+    "citations": [
+     "제35조의2"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-09",
+   "language": "ko",
+   "relevant": [
+    "제37조의2"
+   ],
+   "retrieved": [
+    "제37조의2",
+    "제37조",
+    "제38조",
+    "제48조",
+    "제49조"
+   ],
+   "distances": [
+    0.3348,
+    0.439,
+    0.4622,
+    0.4671,
+    0.4716
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "예",
+    "citations": [
+     "제37조의2"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-10",
+   "language": "ko",
+   "relevant": [
+    "제39조의2"
+   ],
+   "retrieved": [
+    "제39조의2",
+    "제39조",
+    "제39조의3",
+    "제73조",
+    "제34조"
+   ],
+   "distances": [
+    0.2556,
+    0.3364,
+    0.3847,
+    0.4062,
+    0.4087
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "정보주체는 개인정보처리자의 고의 또는 과실로 인하여 개인정보가 유출등이 된 경우에는 300만원 이하의 범위에서 상당한 금액을 손해액으로 하여 배상을 청구할 수 있습니다. 이 경우 해당 개인정보처리자는 고의 또는 과실이 없음을 입증하지 아니하면 책임을 면할 수 없습니다. 따라서 정보가 유출됐는데 손해액을 증명하기 어려우면 300만원 이하의 범위에서 상당한 금액을 배상을 청구할 수 있습니다.",
+    "citations": [
+     "제39조의2"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-11",
+   "language": "ko",
+   "relevant": [
+    "제28조의2"
+   ],
+   "retrieved": [
+    "제28조의2",
+    "제28조의3",
+    "제32조",
+    "제15조",
+    "제28조의4"
+   ],
+   "distances": [
+    0.3788,
+    0.4364,
+    0.4378,
+    0.4427,
+    0.4538
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "아니요",
+    "citations": [
+     "제28조의2"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "ko-12",
+   "language": "ko",
+   "relevant": [
+    "제64조의2"
+   ],
+   "retrieved": [
+    "제64조의2",
+    "제74조",
+    "제71조",
+    "제73조",
+    "제75조"
+   ],
+   "distances": [
+    0.374,
+    0.4047,
+    0.4471,
+    0.4533,
+    0.459
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "법을 어기면 매출액의 3%까지 금전 제재를 받을 수 있습니다.",
+    "citations": [
+     "제64조의2"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-01",
+   "language": "en",
+   "relevant": [
+    "제15조"
+   ],
+   "retrieved": [
+    "제15조",
+    "제18조",
+    "제35조의2",
+    "제17조",
+    "제39조의3"
+   ],
+   "distances": [
+    0.4095,
+    0.4407,
+    0.4604,
+    0.4681,
+    0.4741
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "Yes",
+    "citations": [
+     "제15조"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-02",
+   "language": "en",
+   "relevant": [
+    "제17조"
+   ],
+   "retrieved": [
+    "제27조",
+    "제28조의8",
+    "제18조",
+    "제26조",
+    "제17조"
+   ],
+   "distances": [
+    0.357,
+    0.3984,
+    0.4078,
+    0.4124,
+    0.4131
+   ],
+   "rank": 5,
+   "answer": {
+    "text": "A company may hand personal data over to another company when the transfer is done through a business transfer (영업양도) or merger, and the information subject has been informed of the transfer details as per Article 27. The transfer must be limited to the original purpose and the recipient company must comply with the requirements of the Personal Information Protection Act.",
+    "citations": [
+     "제27조"
+    ],
+    "mentioned": [
+     "제27조"
+    ],
+    "cited": 1,
+    "grounded": true,
+    "hit": false
+   }
+  },
+  {
+   "id": "en-03",
+   "language": "en",
+   "relevant": [
+    "제31조"
+   ],
+   "retrieved": [
+    "제30조의3",
+    "제31조",
+    "제7조",
+    "제28조",
+    "제35조의3"
+   ],
+   "distances": [
+    0.3607,
+    0.3608,
+    0.3967,
+    0.4047,
+    0.4176
+   ],
+   "rank": 2,
+   "answer": {
+    "text": "개인정보처리자는 개인정보의 처리 및 보호에 관한 업무를 총괄해서 담당할 개인정보 보호책임자를 지정하여야 한다.",
+    "citations": [
+     "제31조"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-04",
+   "language": "en",
+   "relevant": [
+    "제31조의2"
+   ],
+   "retrieved": [
+    "제31조의2",
+    "제52조",
+    "제28조의8",
+    "제14조",
+    "제28조의10"
+   ],
+   "distances": [
+    0.4931,
+    0.554,
+    0.5739,
+    0.5858,
+    0.5887
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "Yes",
+    "citations": [
+     "제31조의2"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-05",
+   "language": "en",
+   "relevant": [
+    "제29조"
+   ],
+   "retrieved": [
+    "제29조",
+    "제34조의2",
+    "제35조의4",
+    "제14조",
+    "제3조"
+   ],
+   "distances": [
+    0.3823,
+    0.4446,
+    0.4692,
+    0.4735,
+    0.4775
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "개인정보처리자는 개인정보가 유출등이 되지 아니하도록 내부 관리계획 수립, 접속기록 보관 등 대통령령으로 정하는 바에 따라 안전성 확보에 필요한 기술적ㆍ관리적 및 물리적 조치를 하여야 한다.",
+    "citations": [
+     "제29조"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-06",
+   "language": "en",
+   "relevant": [
+    "제33조"
+   ],
+   "retrieved": [
+    "제33조",
+    "제8조의2",
+    "제32조",
+    "제11조의2",
+    "제35조"
+   ],
+   "distances": [
+    0.4275,
+    0.462,
+    0.4781,
+    0.4783,
+    0.4886
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "A public institution must assess the privacy risks of a new system before running it when the operation of the personal information file may cause privacy damage to the information subject, as specified in 제33조(개인정보 영향평가) 제1항. This assessment is required for public institutions that handle personal information files meeting the criteria set by presidential decree.",
+    "citations": [
+     "제33조"
+    ],
+    "mentioned": [
+     "제33조"
+    ],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-07",
+   "language": "en",
+   "relevant": [
+    "제37조"
+   ],
+   "retrieved": [
+    "제37조",
+    "제37조의2",
+    "제35조의2",
+    "제36조",
+    "제35조"
+   ],
+   "distances": [
+    0.3246,
+    0.4055,
+    0.4067,
+    0.4148,
+    0.4166
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "Yes",
+    "citations": [
+     "제37조"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-08",
+   "language": "en",
+   "relevant": [
+    "제51조"
+   ],
+   "retrieved": [
+    "제51조",
+    "제49조",
+    "제43조",
+    "제65조",
+    "제39조의2"
+   ],
+   "distances": [
+    0.3833,
+    0.4337,
+    0.4676,
+    0.4829,
+    0.4839
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "A consumer organization can take a company to court over privacy violations on behalf of many people if it meets the conditions specified in 제51조. Specifically, it must be a consumer organization registered with the Fair Trade Commission under the Consumer Basic Act (제29조), have at least 1,000 members, and have been registered for at least 3 years. Additionally, the organization must have received requests for group lawsuits from at least 100 information subjects who have suffered similar privacy violations.",
+    "citations": [
+     "제51조"
+    ],
+    "mentioned": [
+     "제51조",
+     "제29조"
+    ],
+    "cited": 1,
+    "grounded": false,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-09",
+   "language": "en",
+   "relevant": [
+    "제26조"
+   ],
+   "retrieved": [
+    "제28조의8",
+    "제27조",
+    "제26조",
+    "제20조",
+    "제60조"
+   ],
+   "distances": [
+    0.4524,
+    0.4642,
+    0.4757,
+    0.4849,
+    0.515
+   ],
+   "rank": 3,
+   "answer": {
+    "text": "A company must disclose the following when it hands processing work to an outside vendor: 1. The purpose of the entrusted business operations outside the scope of the entrusted business, 2. Technical and management security measures for personal information, and 3. Other matters related to the safe management of personal information as prescribed by presidential decree.",
+    "citations": [
+     "제26조"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-10",
+   "language": "en",
+   "relevant": [
+    "제27조"
+   ],
+   "retrieved": [
+    "제27조",
+    "제28조의3",
+    "제34조의2",
+    "제21조",
+    "제26조"
+   ],
+   "distances": [
+    0.4109,
+    0.5034,
+    0.5112,
+    0.5142,
+    0.5142
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "When a business is sold or merged, the personal data of customers must be transferred only for the original purpose and cannot be provided to third parties. The business that receives the data (the '영업양수자등') must use the data solely for the original purpose and cannot provide it to third parties. The business that receives the data is considered the new data processor.",
+    "citations": [
+     "제27조"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-11",
+   "language": "en",
+   "relevant": [
+    "제30조"
+   ],
+   "retrieved": [
+    "제30조",
+    "제32조",
+    "제34조의2",
+    "제67조",
+    "제29조"
+   ],
+   "distances": [
+    0.4026,
+    0.4034,
+    0.4337,
+    0.4348,
+    0.438
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "Yes, a company must publish a personal data handling policy (개인정보 처리방침) that includes the following: (1) purpose of processing personal data, (2) processing and retention period, (3) third-party disclosure (if applicable), (4) procedures for deletion and methods of deletion (if applicable), (5) methods for information subjects and legal representatives to exercise their rights, (6) name and contact information of the data protection officer, (7) installation and operation of automatic collection devices (if applicable), and (8) other matters specified by presidential decree.",
+    "citations": [
+     "제30조"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  },
+  {
+   "id": "en-12",
+   "language": "en",
+   "relevant": [
+    "제36조"
+   ],
+   "retrieved": [
+    "제36조",
+    "제39조의2",
+    "제39조",
+    "제38조",
+    "제37조"
+   ],
+   "distances": [
+    0.3245,
+    0.3981,
+    0.4277,
+    0.434,
+    0.4408
+   ],
+   "rank": 1,
+   "answer": {
+    "text": "Yes",
+    "citations": [
+     "제36조"
+    ],
+    "mentioned": [],
+    "cited": 1,
+    "grounded": true,
+    "hit": true
+   }
+  }
+ ],
+ "evidence_file": "rag-eval-20261022T081909Z-06dbc0.json"
+}

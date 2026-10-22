@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 
-from egress_check import diagnose_chat_answer  # noqa: E402
+from egress_check import diagnose_chat_answer, network_gateway_address  # noqa: E402
 
 
 def chat(content, done_reason="stop", thinking=None):
@@ -36,6 +36,18 @@ class DiagnoseChatAnswerTest(unittest.TestCase):
 
     def test_upstream_error_fails(self):
         self.assertEqual(diagnose_chat_answer(400, {"error": '"gemma3:4b" does not support thinking'}), "status_400")
+
+
+class NetworkGatewayAddressTest(unittest.TestCase):
+    ROUTES = ("Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n"
+              "eth0\t000016AC\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0\n")
+
+    def test_the_first_address_of_the_subnet_is_docker_s_gateway(self):
+        self.assertEqual(network_gateway_address(self.ROUTES), "172.22.0.1")
+
+    def test_no_subnet_route_gives_none(self):
+        self.assertIsNone(network_gateway_address(self.ROUTES.splitlines()[0] + "\n"))
+        self.assertIsNone(network_gateway_address("eth0\tzz\n"))
 
 
 if __name__ == "__main__":

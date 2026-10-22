@@ -12,6 +12,7 @@ in general.
 | 2026-10-21 | Build a defensive case (a tool-call boundary) rather than another vulnerability hunt. |
 | 2026-10-22 | The permitted workflow is a document-review assistant (below), not log triage. |
 | 2026-10-22 | Publish the lab as a public repository once the criteria below pass and the owner has rerun the checks. |
+| 2026-10-22 | Use LangGraph for the agent framework, and Terraform for the AWS design. |
 | 2026-10-22 | `run` needs no approval, because every command on its list (`grep`, `wc`) only reads. Proposed by the agent, confirmed by the owner. A test fails if the list grows or approval is switched off silently. |
 
 ## The permitted workflow
@@ -38,7 +39,9 @@ commands, no network.
 
 ## Acceptance criteria
 
-Each criterion is a test that must pass: `python3 -m unittest discover -s tests` (128 tests, 2026-10-22).
+Each criterion is a test that must pass: `docker compose --profile test run --rm lab-test` (157 tests
+on Linux in the lab image with no network, 2026-10-22). On the host, `python3 -m unittest discover -s
+tests` skips the 10 that need LangGraph.
 
 | # | Criterion | Evidence |
 |---|---|---|
@@ -52,6 +55,8 @@ Each criterion is a test that must pass: `python3 -m unittest discover -s tests`
 | A8 | The recorded events in the audit log file can be checked against each other without trusting the code that wrote them: no line can carry an argument value as text, each used approval matches one allowed call of the same tool and argument size, no recorded execution lacks an allow, and no approval is left open. A count or an id could still encode a value, and an action that was never logged leaves nothing to check. | `ReconcileTest`, and `agent/audit_check.py` on any log |
 | A9 | The whole case runs end to end in the closed lab, and leaves files a reviewer can rerun and compare. | `docker compose --profile demo run --rm review-demo`: six steps, then the log is reconciled; `tests/test_review_demo.py` |
 | A10 | With a local model proposing the calls, the boundary holds whatever the model proposes, nothing it refused reaches the model, and a side effect runs only after a person approves its exact arguments; a declined call is not asked again. | `tests/test_review_agent.py`; `docker compose --profile agent run --rm review-agent`, with and without `PROMPT_DEFENSE=1` |
+| A11 | Retrieval stays inside the closed network and its quality is measured, not asserted: the store and the evaluator have no route out, every model call goes through the gateway, and recall@k, MRR and whether each answer cites at least one article and names only articles it was shown are written to the evidence file. | `tests/test_rag.py`; `docker compose --profile rag run --rm rag-eval` |
+| A12 | An agent built on a framework (LangGraph) keeps A2 to A4 and A10: its extra tools are decided by the same boundary, a side effect stops the graph until a person answers, only an explicit yes approves, a declined call is not asked again, and a memo does not count as done if it cites an article the agent never retrieved, cites a range, misses the article on transfers abroad, or runs past ten lines. | `tests/test_rag_agent.py`; `docker compose --profile rag-agent run --rm rag-agent` |
 
 A6 does not claim the model ignores planted instructions. It claims the boundary does not care
 whether it does.
@@ -68,6 +73,16 @@ turn after reading it; the boundary refused all 9 calls, no approval was asked, 
 not done. With one defense
 sentence, the model still tried 3 times, then finished the job with one approval. A6 held in
 both runs. The prompt changed whether the job got done, not what the model could reach.
+
+A11 and A12 move the case from reviewing synthetic notes to research over public law text, the
+Personal Information Protection Act. In the A11 run, 23 of 24 questions found a relevant article in
+the first 5. 22 of 24 answers named only articles they were shown, and the other 2 copied
+cross-references out of an article they were shown. An AI wrote the questions, so the numbers test
+the pipeline, not legal accuracy. In the A12 run the graph paused once, the operator
+approved the memo through a pipe, and every article the memo cites was retrieved in the run. Read
+against the act, the memo still drops conditions in four places and leaves out one paragraph (see
+the README). The citation check proves where an article came from, not that the model read it
+correctly.
 
 ## Static check before deployment (weeks 3 to 5)
 
@@ -114,8 +129,9 @@ positives sit in 8 of them. The rule, the census and the labelling brief share a
 
 ## Out of scope
 
-Running third-party tool servers, testing systems the owner does not run, and model-level defences
-against prompt injection. The case uses synthetic documents and the lab's own components only.
+Running third-party tool servers, testing systems the owner does not run, model-level defences
+against prompt injection, and legal advice. The case uses synthetic documents, the public text of
+one statute, and the lab's own components only.
 
 ## How this was built
 

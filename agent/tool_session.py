@@ -75,6 +75,7 @@ EXECUTION_ERRORS = frozenset({
     "command_missing",
     "timeout",
     "os_error",
+    "tool_error",
 })
 
 
@@ -290,10 +291,33 @@ def execute(call: ToolCall, verdict: Verdict, workspace: str, root_fd: Optional[
             os.close(root_fd)
 
 
-class ToolSession:
-    """One agent in one workspace: decide, run, and log every call and approval."""
+def _run_extra(runner, call: ToolCall) -> Execution:
+    """Run a tool that is not a file tool. Its failure text could carry its arguments, so only the
+    kind of failure is reported: a LookupError is not_found, anything else tool_error."""
+    try:
+        output = runner(call.arguments)
+    except LookupError:
+        return Execution(False, error="not_found")
+    except Exception:
+        return Execution(False, error="tool_error")
+    if not isinstance(output, str):
+        return Execution(False, error="tool_error")
+    return Execution(True, output=output)
 
-    def __init__(self, workspace: str, audit_path: str, tools: dict = LAB_TOOLS):
+
+class ToolSession:
+    """One agent in one workspace: decide, run, and log every call and approval.
+
+    `runners` adds tools that are not file tools, such as a search over a store: each gets its
+    arguments only after the boundary allowed the call, under the same schema, approval and log
+    rules. Every listed tool needs a runner, and the file tools cannot be replaced.
+    """
+
+    def __init__(self, workspace: str, audit_path: str, tools: dict = LAB_TOOLS, runners: Optional[dict] = None):
+        runners = dict(runners or {})
+        if set(runners) & set(RUNNERS) or set(tools) - set(RUNNERS) != set(runners):
+            raise ValueError("every listed tool other than the file tools needs exactly one runner")
+        self.runners = runners
         self.workspace = workspace
         self.audit_path = audit_path
         self.tools = tools
@@ -352,7 +376,10 @@ class ToolSession:
         self._log({**audit_record(call, verdict), "tool": tool, "event": "decision", "call_id": call_id})
         if not verdict.allowed:
             return verdict, None
-        result = execute(call, verdict, self.workspace, self.root_fd)
+        if call.name in self.runners:
+            result = _run_extra(self.runners[call.name], call)
+        else:
+            result = execute(call, verdict, self.workspace, self.root_fd)
         record = {
             "ts": _now(),
             "tool": tool,

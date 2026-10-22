@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "agent"))
 
 from audit_check import reconcile_audit  # noqa: E402
 import tool_session  # noqa: E402
-from tool_boundary import LAB_TOOLS, ToolCall, Verdict, evaluate_call, grant_approval  # noqa: E402
+from tool_boundary import LAB_TOOLS, ToolCall, ToolSpec, Verdict, _object_schema, evaluate_call, grant_approval  # noqa: E402
 from tool_session import RUN_ENV, RUN_TIMEOUT, ToolSession, execute  # noqa: E402
 
 
@@ -352,6 +352,66 @@ class SessionTest(SessionCase):
         text = self.audit_path.read_text(encoding="utf-8")
         for value in values:
             self.assertNotIn(value, text)
+
+
+class ExtraToolTest(SessionCase):
+    """Tools that are not file tools run through a runner the session is given, under the same rules."""
+
+    def setUp(self):
+        super().setUp()
+        self.calls = []
+
+        def search(arguments):
+            self.calls.append(arguments)
+            if arguments["query"] == "missing":
+                raise LookupError(arguments["query"])
+            if arguments["query"] == "broken":
+                raise RuntimeError("store down")
+            if arguments["query"] == "odd":
+                return {"not": "text"}
+            return "제15조 hit"
+
+        def publish(arguments):
+            self.calls.append(arguments)
+            return "published"
+
+        self.tools = {
+            **LAB_TOOLS,
+            "search": ToolSpec(_object_schema(["query"], query={"type": "string", "maxLength": 50})),
+            "publish": ToolSpec(_object_schema(["text"], text={"type": "string", "maxLength": 50}), side_effect=True),
+        }
+        self.extra = ToolSession(str(self.workspace), str(self.audit_path), tools=self.tools, runners={"search": search, "publish": publish})
+        self.addCleanup(self.extra.close)
+
+    def test_a_read_only_extra_tool_runs_once_and_is_logged(self):
+        verdict, result = self.extra.submit(ToolCall("search", {"query": "retention"}))
+        self.assertEqual((verdict.reason, result.ok, result.output), ("allowed", True, "제15조 hit"))
+        self.assertEqual(self.calls, [{"query": "retention"}])
+        self.assertEqual([(r["tool"], r["event"]) for r in self.lines()], [("search", "decision"), ("search", "executed")])
+        self.assertNotIn("retention", self.audit_path.read_text(encoding="utf-8"))
+
+    def test_runner_failures_become_execution_errors(self):
+        for query, error in (("missing", "not_found"), ("broken", "tool_error"), ("odd", "tool_error")):
+            with self.subTest(query=query):
+                _, result = self.extra.submit(ToolCall("search", {"query": query}))
+                self.assertEqual((result.ok, result.error), (False, error))
+        self.assertEqual(reconcile_audit(str(self.audit_path), ["missing", "broken"], self.tools)["violations"], [])
+
+    def test_schema_and_approval_rules_apply_before_the_runner(self):
+        self.assertEqual(self.extra.submit(ToolCall("search", {"query": "x" * 51}))[0].reason, "schema_invalid")
+        publish = ToolCall("publish", {"text": "memo"})
+        self.assertEqual(self.extra.submit(publish)[0].reason, "approval_required")
+        self.assertEqual(self.calls, [])
+        self.extra.approve(publish)
+        self.assertEqual(self.extra.submit(publish)[1].output, "published")
+        self.assertEqual(self.calls, [{"text": "memo"}])
+        report = reconcile_audit(str(self.audit_path), ["memo"], self.tools)
+        self.assertEqual((report["violations"], report["outstanding_approvals"]), ([], 0))
+
+    def test_a_listed_tool_without_a_runner_is_a_session_error(self):
+        tools = {**LAB_TOOLS, "search": self.tools["search"]}
+        with self.assertRaises(ValueError):
+            ToolSession(str(self.workspace), str(self.audit_path), tools=tools)
 
 
 class ReconcileTest(SessionCase):

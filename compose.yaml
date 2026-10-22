@@ -88,3 +88,114 @@ services:
     stdin_open: true
     tty: true
     profiles: [agent]
+
+  # Private-network RAG: pgvector on lab_internal only, run as its own user with the data on
+  # tmpfs (each run ingests again), and a password that comes from a file that is never committed.
+  vector-db:
+    image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+    user: "999:999"
+    read_only: true
+    tmpfs:
+      - /var/lib/postgresql/data:uid=999,gid=999,mode=0700
+      - /var/run/postgresql:uid=999,gid=999
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      POSTGRES_USER: rag
+      POSTGRES_DB: rag
+      POSTGRES_PASSWORD_FILE: /run/secrets/vector_db_password
+    secrets: [vector_db_password]
+    networks: [lab_internal]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "rag", "-d", "rag"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    profiles: [rag, rag-agent]
+
+  rag-eval:
+    # Built here from the hash-locked requirements, never pulled: no registry holds this name for the lab.
+    build: images/lab-python
+    image: closed-network-ai-lab/lab-python:1
+    pull_policy: build
+    command: ["python", "-u", "/rag/rag_eval.py"]
+    user: "65534:65534"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      GATEWAY: http://model-gateway:8080
+      EMBED_MODEL: bge-m3
+      MODEL: qwen3:4b
+      VECTOR_DB_HOST: vector-db
+      EVIDENCE_DIR: /evidence
+    volumes:
+      - ./rag:/rag:ro
+      - ./evidence:/evidence
+    secrets: [vector_db_password]
+    networks: [lab_internal]
+    depends_on:
+      vector-db: {condition: service_healthy}
+      model-gateway: {condition: service_started}
+    profiles: [rag]
+
+  # The law-research agent: LangGraph drives the model; search_law and read_article run against
+  # the vector store, the memo write waits for a person's approval.
+  rag-agent:
+    build: images/lab-python
+    image: closed-network-ai-lab/lab-python:1
+    pull_policy: build
+    command: ["python", "-u", "/agent/rag_agent.py"]
+    user: "65534:65534"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      GATEWAY: http://model-gateway:8080
+      MODEL: qwen3:4b
+      EMBED_MODEL: bge-m3
+      VECTOR_DB_HOST: vector-db
+      EVIDENCE_DIR: /evidence
+      CORPUS: /rag/corpus/pipa.json
+      PYTHONPATH: /agent:/rag
+    volumes:
+      - ./agent:/agent:ro
+      - ./rag:/rag:ro
+      - ./evidence:/evidence
+    secrets: [vector_db_password]
+    networks: [lab_internal]
+    depends_on:
+      vector-db: {condition: service_healthy}
+      model-gateway: {condition: service_started}
+    stdin_open: true
+    tty: true
+    profiles: [rag-agent]
+
+  # The whole test suite on Linux, in the lab image (LangGraph included), with no network.
+  lab-test:
+    build: images/lab-python
+    image: closed-network-ai-lab/lab-python:1
+    pull_policy: build
+    command: ["python", "-m", "unittest", "discover", "-s", "tests"]
+    working_dir: /lab
+    user: "65534:65534"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./agent:/lab/agent:ro
+      - ./app:/lab/app:ro
+      - ./gateway:/lab/gateway:ro
+      - ./rag:/lab/rag:ro
+      - ./tests:/lab/tests:ro
+    network_mode: none
+    profiles: [test]
+
+secrets:
+  # Make it once (the README's retrieval section has the command); .secrets/ is not committed.
+  vector_db_password:
+    file: ./.secrets/vector_db_password
