@@ -29,8 +29,8 @@ resource "aws_rds_cluster_parameter_group" "lab" {
   }
 
   # pgAudit records DDL and role changes, such as the master user's setup of `rag`. It is added
-  # next to pg_stat_statements, which Performance Insights reads SQL statistics from; setting the
-  # list to pgaudit alone would drop it. The library loads at startup, so this applies on reboot,
+  # next to pg_stat_statements, which keeps per-statement SQL statistics; setting the list to
+  # pgaudit alone would drop it. The library loads at startup, so this applies on reboot,
   # and `CREATE EXTENSION pgaudit` still has to run in the database (see README).
   parameter {
     name         = "shared_preload_libraries"
@@ -78,19 +78,19 @@ resource "aws_rds_cluster" "lab" {
   }
 }
 
-# One instance per Availability Zone: a writer and a reader to fail over to.
+# One instance per Availability Zone: a writer and a reader to fail over to. Performance Insights
+# is off: with it on, AWS recommends a minimum of 2 ACUs, four times this design's fixed database
+# cost. Load is watched by the capacity alarms and pg_stat_statements instead.
 resource "aws_rds_cluster_instance" "lab" {
   count = length(var.availability_zones)
 
-  identifier                            = "${var.name}-${count.index}"
-  cluster_identifier                    = aws_rds_cluster.lab.id
-  engine                                = aws_rds_cluster.lab.engine
-  engine_version                        = aws_rds_cluster.lab.engine_version
-  instance_class                        = "db.serverless"
-  availability_zone                     = var.availability_zones[count.index]
-  publicly_accessible                   = false
-  auto_minor_version_upgrade            = true
-  performance_insights_enabled          = true
-  performance_insights_kms_key_id       = aws_kms_key.lab.arn
-  performance_insights_retention_period = 7
+  identifier                   = "${var.name}-${count.index}"
+  cluster_identifier           = aws_rds_cluster.lab.id
+  engine                       = aws_rds_cluster.lab.engine
+  engine_version               = aws_rds_cluster.lab.engine_version
+  instance_class               = "db.serverless"
+  availability_zone            = var.availability_zones[count.index]
+  publicly_accessible          = false
+  auto_minor_version_upgrade   = true
+  performance_insights_enabled = false
 }

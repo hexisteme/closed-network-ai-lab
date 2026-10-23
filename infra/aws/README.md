@@ -21,7 +21,7 @@ credentials and no cost.
 | Services may talk only on named ports | Security groups reference each other: the agent tasks reach the endpoints on 443 and the database on 5432, and nothing else; the default group has no rules |
 
 One customer managed KMS key, with rotation on, encrypts the five log groups, the database
-storage, its master secret, Performance Insights and the alarm topic. One of the five is the group Aurora exports
+storage, its master secret and the alarm topic. One of the five is the group Aurora exports
 the PostgreSQL log to; it is created here first, so it gets the key and a retention instead of
 RDS's defaults. Every role that writes to a log group may use the key only through CloudWatch
 Logs (`kms:ViaService`). Logs are kept 400 days by default.
@@ -67,7 +67,7 @@ runs assert:
 - nothing hands out or takes a public address, the store is encrypted with the lab key, uses IAM
   sign-in, keeps its master password under the lab key, resists deletion and uses the parameter
   group that refuses connections without TLS, loads pgAudit for DDL and role changes next to
-  `pg_stat_statements` and logs session ends, Performance Insights is on under the lab key, all
+  `pg_stat_statements` and logs session ends, Performance Insights stays off, all
   five log groups use the lab key and keep a year or more, and the key rotates and its policy
   admits only the account, CloudWatch Logs for those five groups and this lab's alarms;
 - every subnet uses the route table with only the local route and a network ACL that admits only
@@ -87,16 +87,16 @@ runs assert:
   delivery service, acting for this account, may write.
 
 `tests/break_the_design.py` checks that the tests can fail. It breaks a fresh copy of the design
-49 ways, one at a time. A break counts as caught only if the copy is still valid Terraform, the
+50 ways, one at a time. A break counts as caught only if the copy is still valid Terraform, the
 run that covers it fails and the runs before it pass:
 
 ```
 python3 -I tests/break_the_design.py
 ```
 
-On 2026-10-23, all 49 breaks were caught. trivy's HIGH and CRITICAL checks caught 5 of the 49: a
+On 2026-10-23, all 50 breaks were caught. trivy's HIGH and CRITICAL checks caught 5 of the 50: a
 public database, an unencrypted database, a subnet handing out public addresses, a database rule
-open to any address and an unencrypted alarm topic. The other 44 break this design's own rules,
+open to any address and an unencrypted alarm topic. The other 45 break this design's own rules,
 such as which models the endpoint allows, which names DNS answers or which alarm watches what,
 which a general scanner has no way to know.
 
@@ -113,7 +113,7 @@ python3 -I cost/estimate.py verify
 python3 -I cost/estimate.py
 ```
 
-[The 2026-10-23 run](../../evidence/cost-estimate-20261022T175328Z.json), on-demand list prices in
+[The 2026-10-23 run](../../evidence/cost-estimate-20261023T001845Z.json), on-demand list prices in
 USD for a 730-hour month, before tax, credits and the account-wide free tiers:
 
 | | USD a month |
@@ -129,10 +129,10 @@ million input and 12 million output), to be multiplied by the chosen model's rat
 ECR and S3 endpoints that running tasks would need, and traffic between zones are not in the
 design and not priced.
 
-The fixed figure is a floor. AWS recommends a minimum of 2 ACUs per instance with Performance
-Insights on, which would make it 624.06; and it lists Performance Insights, CloudWatch Logs export
-and pgAudit, all three on here, among the features that can keep an idle instance above its
-minimum. The minimum stays 0.5 in the code.
+Performance Insights is off for this reason: AWS recommends a minimum of 2 ACUs per instance
+with it on, which would make the fixed lines 624.06. The fixed figure is still a floor: AWS lists
+CloudWatch Logs export and pgAudit, both on here, among the features that can keep an idle
+instance above its minimum.
 
 ## Limits
 
@@ -192,7 +192,7 @@ minimum. The minimum stays 0.5 in the code.
 - Bedrock invocation logging is one setting per account and Region. Applied in a shared account,
   this replaces whatever is there: deploy into a dedicated account, or check
   `GetModelInvocationLoggingConfiguration` first.
-- One key covers the logs, the database storage, the master secret and Performance Insights.
+- One key covers the logs, the database storage, the master secret and the alarm topic.
   Separate keys per kind of data would narrow what one policy mistake exposes; for a lab this size
   one key was chosen.
 - `rds.force_ssl` refuses plaintext. The minimum TLS version stays at the engine default, which
@@ -210,6 +210,9 @@ minimum. The minimum stays 0.5 in the code.
 - Bedrock Guardrails are not used. The lab asks a person before a tool has side effects; that
   does not filter what the model reads or writes, and the agent that asks is out of scope here.
 - Two Availability Zones by default, one database instance in each.
+- Performance Insights is off, so there is no history of database load by query or wait event;
+  the capacity alarms and `pg_stat_statements` are what remains. Turning it on means the 2 ACU
+  minimum AWS recommends (see Cost).
 
 ## Sources
 

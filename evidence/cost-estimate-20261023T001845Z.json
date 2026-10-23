@@ -1,0 +1,1302 @@
+{
+ "kind": "cost-estimate",
+ "generated": "20261023T001845Z",
+ "note": "List prices only. The design is not deployed; no AWS account or credentials were used.",
+ "region": "ap-northeast-2",
+ "currency": "USD",
+ "hours_per_month": 730,
+ "prices_file": "prices-ap-northeast-2-20261022.json",
+ "prices_sha256": "cb37a64bf7e88baf72d75fd0b5c5d60083c1c4e3c626ef9d5d67818d6fe8328c",
+ "quantities_sha256": "d47184eff1812d810c71f2bcae136d48868ad310fdf96170888e71f20bfbb8eb",
+ "terraform_sha256": {
+  "alarms.tf": "ca4381a8e66db17dd8d21315edb0747a174b8995ed5aa45de1830c3501d16318",
+  "database.tf": "14171c2bfbc9521c69777a85bb8e97b5ee3a05cb198ba3a4872457bf8d474453",
+  "dns.tf": "0a9b5bec63c807373b127b8a75d4651b9bb4ac549aeb5a9f9803a637e3d28401",
+  "endpoints.tf": "0d8c1b928aa326ae6ced39e4af4158d15770bcef7b9f3043193182c1054eb43e",
+  "iam.tf": "e976ddef5a64ee18bb0d81579282cbe97ef63301a9e3703989e41b2a54165326",
+  "logging.tf": "641013d315c854bf9b69884153b0421be84903913208bf268393c23d844a5eb2",
+  "main.tf": "85555806608ae1d8cc4b50a6326369973455fc3c3552c9e741218cd2fdeda9ce",
+  "network.tf": "7522ed5ba48a9587a14b1a3757e28ca88f7864a11978bcdc288865e8af7b4e2f",
+  "outputs.tf": "03ce3879b6c969b54b03b8fc5c47284365cd53e5034c620518152e999e2f1bfd",
+  "variables.tf": "486509aa3915c7c31b1f08d9ff184d5ab51dd4f26888c96f3230c326e8d21be8",
+  "versions.tf": "9a6dd46420b933d72ae07d42da3561ff53eb475db12eb1e52f8ff1f17f158757"
+ },
+ "price_list": {
+  "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json",
+  "index_publicationDate": "2026-10-22T15:42:17Z",
+  "retrieved": "2026-10-22T17:02:18Z",
+  "offers": {
+   "AWSSecretsManager": {
+    "version": "20260911124610",
+    "publicationDate": "2026-09-11T12:46:10Z",
+    "sha256": "3a9022ee26362a62762077aa95a699e40018cb052b671b7d726614a934424cd8"
+   },
+   "AmazonCloudWatch": {
+    "version": "20261007115540",
+    "publicationDate": "2026-10-07T11:55:40Z",
+    "sha256": "3fc8544c26354f0e01b56abb900c4828c37d297a0a08b53a7bf96ab8280544ff"
+   },
+   "AmazonRDS": {
+    "version": "20261020003232",
+    "publicationDate": "2026-10-20T00:32:32Z",
+    "sha256": "07165e482c83936db40a2245ec602bab6e885a0de1a24616d560929b73f7c8e5"
+   },
+   "AmazonRoute53": {
+    "version": "20260911124504",
+    "publicationDate": "2026-09-11T12:45:04Z",
+    "sha256": "6839289a5da11e3b0203f307a4de8969f8704e1a246a60bbaa93df291b16be21"
+   },
+   "AmazonSNS": {
+    "version": "20260915151944",
+    "publicationDate": "2026-09-15T15:19:44Z",
+    "sha256": "c017d628ad1f1861b1b4e3e3b9182d177c36c8055462791cf36e6cd2fe4586cf"
+   },
+   "AmazonVPC": {
+    "version": "20261016224321",
+    "publicationDate": "2026-10-16T22:43:21Z",
+    "sha256": "e282b2e26ff9ee03f09319be0db2544c54973444de13af5d493a59ef038c1eb8"
+   },
+   "awskms": {
+    "version": "20260911124601",
+    "publicationDate": "2026-09-11T12:46:01Z",
+    "sha256": "e9eea32ac6248555f1081deb1decb1d5c865268450e90a180d4bad191f763f93"
+   }
+  }
+ },
+ "assumes": [
+  "The variables keep their defaults: two Availability Zones, db_max_capacity 2, log_retention_days 400, alarm_emails empty. model_ids has no default, so no model is priced.",
+  "The account holds only this design, so every price tier starts at zero. The Price List's account-wide free tiers (separate Global SKUs) are listed, not subtracted; a $0 first tier inside a regional SKU is applied as published.",
+  "On-demand list prices in USD, before tax, credits, Savings Plans or reserved capacity.",
+  "Bytes are converted to GB as 2^30 bytes."
+ ],
+ "formulas": {
+  "model_calls": "agent_runs x model_calls_per_run",
+  "embedding_calls": "agent_runs x embedding_calls_per_run",
+  "log_gb.flow": "agent_runs x flow_log_bytes_per_run / bytes_per_gb",
+  "log_gb.agent": "agent_runs x agent_log_bytes_per_run / bytes_per_gb",
+  "log_gb.invocations": "(model_calls + embedding_calls) x invocation_log_bytes_per_call / bytes_per_gb",
+  "log_gb.dns": "agent_runs x dns_queries_per_run x dns_log_bytes_per_query / bytes_per_gb",
+  "log_gb.postgresql": "agent_runs x postgresql_log_bytes_per_run / bytes_per_gb",
+  "log_storage_gb_month": "sum of log_gb x log_retention_days x 24 / hours_per_month x log_stored_fraction",
+  "endpoint_gb": "((model_calls + embedding_calls) x endpoint_bytes_per_call + agent_runs x agent_log_bytes_per_run) / bytes_per_gb",
+  "dns_queries": "agent_runs x dns_queries_per_run",
+  "aurora_storage_gb": "aurora_storage_gb",
+  "aurora_io_requests": "aurora_io_requests",
+  "aurora_backup_billed_gb": "aurora_backup_billed_gb",
+  "aurora_acu_hours_above_minimum": "aurora_instances x (aurora_average_acu_per_instance - aurora_minimum_acu) x hours_per_month",
+  "kms_requests": "kms_requests + alarm_notifications x kms_requests_per_publish",
+  "secrets_api_requests": "secrets_api_requests",
+  "sns_publishes": "alarm_notifications",
+  "sns_email_deliveries": "alarm_notifications x alarm_email_addresses",
+  "input_tokens": "model_calls x input_tokens_per_call",
+  "output_tokens": "model_calls x output_tokens_per_call",
+  "embedding_tokens": "embedding_calls x embedding_tokens_per_call"
+ },
+ "fixed": {
+  "lines": [
+   {
+    "id": "interface_endpoint_hours",
+    "what": "Interface endpoints bedrock-runtime and logs, one network interface in each app subnet",
+    "quantity": 2920,
+    "unit": "Hrs",
+    "price": "vpc_endpoint_hour",
+    "cites": [
+     "endpoints.tf:4",
+     "endpoints.tf:7",
+     "endpoints.tf:8",
+     "endpoints.tf:28",
+     "endpoints.tf:31",
+     "endpoints.tf:32",
+     "network.tf:65"
+    ],
+    "status": "priced",
+    "usd": "37.9600",
+    "sku": "BH2CREBM4CXH3HB5",
+    "usagetype": "APN2-VpcEndpoint-Hours",
+    "rate": "0.013/Hrs"
+   },
+   {
+    "id": "aurora_minimum_acu_hours",
+    "what": "Aurora Serverless v2 at its minimum capacity, writer and reader",
+    "quantity": 730,
+    "unit": "ACU-Hr",
+    "price": "aurora_acu_hour",
+    "cites": [
+     "database.tf:76",
+     "database.tf:84",
+     "database.tf:85",
+     "database.tf:91"
+    ],
+    "status": "priced",
+    "usd": "146.0000",
+    "sku": "X6RXUNFS2M5FWJEG",
+    "usagetype": "APN2-Aurora:ServerlessV2Usage",
+    "rate": "0.2/ACU-Hr"
+   },
+   {
+    "id": "kms_key",
+    "what": "Customer managed KMS key (the lab key), rotation on",
+    "quantity": 1,
+    "unit": "Keys",
+    "price": "kms_key_month",
+    "cites": [
+     "main.tf:45",
+     "main.tf:47"
+    ],
+    "status": "priced",
+    "usd": "1.0000",
+    "sku": "6A8VB4MVVE4M8M69",
+    "usagetype": "ap-northeast-2-KMS-Keys",
+    "rate": "1/Keys"
+   },
+   {
+    "id": "db_master_secret",
+    "what": "The database master password, kept by RDS in Secrets Manager",
+    "quantity": 1,
+    "unit": "Secrets",
+    "price": "secret_month",
+    "cites": [
+     "database.tf:56",
+     "database.tf:57"
+    ],
+    "status": "priced",
+    "usd": "0.4000",
+    "sku": "8TY6BPQ52JVYCRQD",
+    "usagetype": "APN2-AWSSecretsManager-Secrets",
+    "rate": "0.4/Secrets"
+   },
+   {
+    "id": "dns_firewall_domain_names",
+    "what": "Domain names stored in the two DNS Firewall domain lists",
+    "quantity": 5,
+    "unit": "Mo",
+    "price": "dns_firewall_domain_name",
+    "cites": [
+     "dns.tf:9",
+     "dns.tf:10",
+     "dns.tf:11",
+     "dns.tf:12",
+     "dns.tf:18"
+    ],
+    "status": "priced",
+    "usd": "0.0025",
+    "sku": "DVB8JZJX9MJ38YDJ",
+    "usagetype": "APN2-DNS-FirewallDomainName",
+    "rate": "0.0005/Mo"
+   },
+   {
+    "id": "cloudwatch_alarms",
+    "what": "CloudWatch metric alarms, standard resolution, one metric each",
+    "quantity": 7,
+    "unit": "Alarms",
+    "price": "alarm_standard",
+    "cites": [
+     "alarms.tf:49",
+     "alarms.tf:68",
+     "alarms.tf:92"
+    ],
+    "status": "priced",
+    "usd": "0.7000",
+    "sku": "PRDBYUGVEHFG9C2J",
+    "usagetype": "APN2-CW:AlarmMonitorUsage",
+    "rate": "0.1/Alarms",
+    "counted_blocks": [
+     {
+      "at": "alarms.tf:49",
+      "name": "bedrock",
+      "instances": 4
+     },
+     {
+      "at": "alarms.tf:68",
+      "name": "dns_refused_names",
+      "instances": 1
+     },
+     {
+      "at": "alarms.tf:92",
+      "name": "db_capacity",
+      "instances": 2
+     }
+    ]
+   },
+   {
+    "id": "sns_topics",
+    "what": "SNS topic the alarms publish to, encrypted with the lab key",
+    "quantity": 1,
+    "unit": "topics",
+    "price": null,
+    "cites": [
+     "alarms.tf:7"
+    ],
+    "status": "no charge",
+    "usd": "0.0000",
+    "reason": "The Seoul AmazonSNS offer has no SKU for a standard topic; its publishes and email deliveries are priced per unit in the scenarios.",
+    "counted_blocks": [
+     {
+      "at": "alarms.tf:7",
+      "name": "alarms",
+      "instances": 1
+     }
+    ]
+   }
+  ],
+  "total_usd": "186.0625",
+  "not_priced": []
+ },
+ "scenarios": {
+  "idle": {
+   "lines": [
+    {
+     "id": "log_ingest_flow",
+     "what": "VPC flow logs ingested (vended logs)",
+     "quantity": 0,
+     "unit": "GB",
+     "price": "logs_ingest_vended",
+     "cites": [
+      "network.tf:107",
+      "network.tf:109",
+      "main.tf:25"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "4RVDG642Y3ZTESVR",
+     "usagetype": "APN2-VendedLog-Bytes",
+     "rate": "tiered 0.76 from 0, 0.38 from 10240, 0.152 from 30720, 0.076 from 51200 GB"
+    },
+    {
+     "id": "log_ingest_agent",
+     "what": "Agent audit log ingested",
+     "quantity": 0,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "main.tf:26",
+      "iam.tf:45"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_ingest_invocations",
+     "what": "Bedrock invocation log ingested, every body delivery off",
+     "quantity": 0,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "logging.tf:40",
+      "main.tf:27"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_ingest_dns",
+     "what": "Resolver query log ingested (vended logs)",
+     "quantity": 0,
+     "unit": "GB",
+     "price": "logs_ingest_vended",
+     "cites": [
+      "dns.tf:62",
+      "dns.tf:64",
+      "main.tf:28"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "4RVDG642Y3ZTESVR",
+     "usagetype": "APN2-VendedLog-Bytes",
+     "rate": "tiered 0.76 from 0, 0.38 from 10240, 0.152 from 30720, 0.076 from 51200 GB"
+    },
+    {
+     "id": "log_ingest_postgresql",
+     "what": "Aurora PostgreSQL log exported (connections, disconnections, pgAudit DDL and role changes)",
+     "quantity": 0,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "database.tf:72",
+      "database.tf:21",
+      "database.tf:26",
+      "main.tf:29"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_storage",
+     "what": "Log storage of the five groups once 400 days have filled",
+     "quantity": 0,
+     "unit": "GB-Mo",
+     "price": "logs_storage",
+     "cites": [
+      "main.tf:94",
+      "main.tf:95",
+      "main.tf:98"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "E7V5NF3GN7MQKCB6",
+     "usagetype": "APN2-TimedStorage-ByteHrs",
+     "rate": "0.0314/GB-Mo"
+    },
+    {
+     "id": "endpoint_data_processed",
+     "what": "Data processed by the two interface endpoints",
+     "quantity": 0,
+     "unit": "GB",
+     "price": "vpc_endpoint_gb",
+     "cites": [
+      "endpoints.tf:4",
+      "endpoints.tf:28"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "K4QBYWVDC6VAS9E8",
+     "usagetype": "APN2-VpcEndpoint-Bytes",
+     "rate": "tiered 0.01 from 0, 0.006 from 1048576, 0.004 from 5242880 GB"
+    },
+    {
+     "id": "dns_firewall_queries",
+     "what": "DNS queries inspected by DNS Firewall",
+     "quantity": 0,
+     "unit": "Queries",
+     "price": "dns_firewall_query",
+     "cites": [
+      "dns.tf:45",
+      "dns.tf:48"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "GB3W96WP9REQ9BSD",
+     "usagetype": "APN2-DNS-FirewallQueries",
+     "rate": "tiered 0.0000006 from 0, 0.0000004 from 1000000000 Queries"
+    },
+    {
+     "id": "aurora_storage",
+     "what": "Aurora Standard storage consumed",
+     "quantity": 1,
+     "unit": "GB-Mo",
+     "price": "aurora_storage_gb_month",
+     "cites": [
+      "database.tf:48",
+      "database.tf:64"
+     ],
+     "status": "priced",
+     "usd": "0.1200",
+     "sku": "AG84CY66WDB8RGGA",
+     "usagetype": "APN2-Aurora:StorageUsage",
+     "rate": "0.12/GB-Mo"
+    },
+    {
+     "id": "aurora_io",
+     "what": "Aurora Standard I/O requests",
+     "quantity": 0,
+     "unit": "IOs",
+     "price": "aurora_io_request",
+     "cites": [
+      "database.tf:48"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "MQDQ9YGYC8RGEVZB",
+     "usagetype": "APN2-Aurora:StorageIOUsage",
+     "rate": "0.00000024/IOs"
+    },
+    {
+     "id": "aurora_backup",
+     "what": "Aurora backup storage beyond the free allocation",
+     "quantity": 0,
+     "unit": "GB-Mo",
+     "price": "aurora_backup_gb_month",
+     "cites": [
+      "database.tf:67"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "PDQQMMMK7KEY57DK",
+     "usagetype": "APN2-Aurora:BackupUsage",
+     "rate": "0.023/GB-Mo"
+    },
+    {
+     "id": "aurora_acu_above_minimum",
+     "what": "Aurora capacity above the minimum, both instances",
+     "quantity": 0,
+     "unit": "ACU-Hr",
+     "price": "aurora_acu_hour",
+     "cites": [
+      "database.tf:77",
+      "variables.tf:59",
+      "database.tf:85"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "X6RXUNFS2M5FWJEG",
+     "usagetype": "APN2-Aurora:ServerlessV2Usage",
+     "rate": "0.2/ACU-Hr"
+    },
+    {
+     "id": "kms_requests",
+     "what": "KMS requests, alarm publishes to the encrypted topic included",
+     "quantity": 0,
+     "unit": "Requests",
+     "price": "kms_request",
+     "cites": [
+      "main.tf:45",
+      "alarms.tf:9",
+      "main.tf:99"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "A3247YR2SJRYKDEX",
+     "usagetype": "ap-northeast-2-KMS-Requests",
+     "rate": "0.000003/Requests"
+    },
+    {
+     "id": "secrets_api_requests",
+     "what": "Secrets Manager API requests (rotation of the master secret)",
+     "quantity": 50,
+     "unit": "API Requests",
+     "price": "secrets_api_request",
+     "cites": [
+      "database.tf:56"
+     ],
+     "status": "priced",
+     "usd": "0.0003",
+     "sku": "9779GVGYGTKZ2UJA",
+     "usagetype": "APN2-AWSSecretsManagerAPIRequest",
+     "rate": "0.000005/API Requests"
+    },
+    {
+     "id": "sns_publishes",
+     "what": "Alarm and recovery notifications published to the topic",
+     "quantity": 0,
+     "unit": "Requests",
+     "price": "sns_request",
+     "cites": [
+      "alarms.tf:63",
+      "alarms.tf:64"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "WRZT99W8W7KV8S4U",
+     "usagetype": "APN2-Requests-Tier1",
+     "rate": "tiered 0 from 0, 0.0000005 from 1000000 Requests"
+    },
+    {
+     "id": "sns_email_deliveries",
+     "what": "Email deliveries, one per notification per subscribed address",
+     "quantity": 0,
+     "unit": "Notifications",
+     "price": "sns_email_notification",
+     "cites": [
+      "alarms.tf:41",
+      "alarms.tf:44",
+      "variables.tf:81"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "HZRTA3DAEB5KFQJF",
+     "usagetype": "APN2-DeliveryAttempts-SMTP",
+     "rate": "tiered 0 from 0, 0.00002 from 1000 Notifications"
+    },
+    {
+     "id": "bedrock_input_tokens",
+     "what": "Bedrock input tokens, chat model",
+     "quantity": 0,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40",
+      "endpoints.tf:20"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "No model is chosen: model_ids has no default. The Price List names Seoul models by display name and usage type, with no attribute holding the Bedrock model ID that model_ids takes (see offers_checked_without_prices in the snapshot), and it does not say which models Seoul serves in-Region without a cross-Region inference profile, which the endpoint policy does not allow.",
+     "formula": "input_tokens / 1,000,000 x (USD per 1M input tokens of the chosen model)"
+    },
+    {
+     "id": "bedrock_output_tokens",
+     "what": "Bedrock output tokens, chat model",
+     "quantity": 0,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40",
+      "endpoints.tf:20"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "As for input tokens: no model is chosen and the Price List does not map to model IDs.",
+     "formula": "output_tokens / 1,000,000 x (USD per 1M output tokens of the chosen model)"
+    },
+    {
+     "id": "bedrock_embedding_tokens",
+     "what": "Bedrock input tokens, embedding model",
+     "quantity": 0,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "As for input tokens; which embedding models Seoul offers was not checked (infra/aws/README.md, Limits).",
+     "formula": "embedding_tokens / 1,000,000 x (USD per 1M input tokens of the chosen embedding model)"
+    }
+   ],
+   "total_usd": "0.1203",
+   "not_priced": [
+    "bedrock_input_tokens",
+    "bedrock_output_tokens",
+    "bedrock_embedding_tokens"
+   ],
+   "about": "Deployed and unused: no agent run, no alarm. A floor: Aurora's background I/O and connections and the KMS calls of log and database encryption were not measured and count as zero.",
+   "with_fixed_usd": "186.1828",
+   "amounts": {
+    "model_calls": 0,
+    "embedding_calls": 0,
+    "log_gb.flow": 0,
+    "log_gb.agent": 0,
+    "log_gb.invocations": 0,
+    "log_gb.dns": 0,
+    "log_gb.postgresql": 0,
+    "endpoint_gb": 0,
+    "dns_queries": 0,
+    "aurora_storage_gb": 1,
+    "aurora_io_requests": 0,
+    "aurora_backup_billed_gb": 0,
+    "aurora_acu_hours_above_minimum": 0,
+    "kms_requests": 0,
+    "secrets_api_requests": 50,
+    "sns_publishes": 0,
+    "sns_email_deliveries": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "embedding_tokens": 0,
+    "log_storage_gb_month": 0
+   }
+  },
+  "pilot": {
+   "lines": [
+    {
+     "id": "log_ingest_flow",
+     "what": "VPC flow logs ingested (vended logs)",
+     "quantity": 0.009313225746154785,
+     "unit": "GB",
+     "price": "logs_ingest_vended",
+     "cites": [
+      "network.tf:107",
+      "network.tf:109",
+      "main.tf:25"
+     ],
+     "status": "priced",
+     "usd": "0.0071",
+     "sku": "4RVDG642Y3ZTESVR",
+     "usagetype": "APN2-VendedLog-Bytes",
+     "rate": "tiered 0.76 from 0, 0.38 from 10240, 0.152 from 30720, 0.076 from 51200 GB"
+    },
+    {
+     "id": "log_ingest_agent",
+     "what": "Agent audit log ingested",
+     "quantity": 0.0037364661693573,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "main.tf:26",
+      "iam.tf:45"
+     ],
+     "status": "priced",
+     "usd": "0.0028",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_ingest_invocations",
+     "what": "Bedrock invocation log ingested, every body delivery off",
+     "quantity": 0.0130385160446167,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "logging.tf:40",
+      "main.tf:27"
+     ],
+     "status": "priced",
+     "usd": "0.0099",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_ingest_dns",
+     "what": "Resolver query log ingested (vended logs)",
+     "quantity": 0.0027939677238464355,
+     "unit": "GB",
+     "price": "logs_ingest_vended",
+     "cites": [
+      "dns.tf:62",
+      "dns.tf:64",
+      "main.tf:28"
+     ],
+     "status": "priced",
+     "usd": "0.0021",
+     "sku": "4RVDG642Y3ZTESVR",
+     "usagetype": "APN2-VendedLog-Bytes",
+     "rate": "tiered 0.76 from 0, 0.38 from 10240, 0.152 from 30720, 0.076 from 51200 GB"
+    },
+    {
+     "id": "log_ingest_postgresql",
+     "what": "Aurora PostgreSQL log exported (connections, disconnections, pgAudit DDL and role changes)",
+     "quantity": 0.0011175870895385742,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "database.tf:72",
+      "database.tf:21",
+      "database.tf:26",
+      "main.tf:29"
+     ],
+     "status": "priced",
+     "usd": "0.0008",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_storage",
+     "what": "Log storage of the five groups once 400 days have filled",
+     "quantity": 0.394517428254428,
+     "unit": "GB-Mo",
+     "price": "logs_storage",
+     "cites": [
+      "main.tf:94",
+      "main.tf:95",
+      "main.tf:98"
+     ],
+     "status": "priced",
+     "usd": "0.0124",
+     "sku": "E7V5NF3GN7MQKCB6",
+     "usagetype": "APN2-TimedStorage-ByteHrs",
+     "rate": "0.0314/GB-Mo"
+    },
+    {
+     "id": "endpoint_data_processed",
+     "what": "Data processed by the two interface endpoints",
+     "quantity": 0.5252771079540253,
+     "unit": "GB",
+     "price": "vpc_endpoint_gb",
+     "cites": [
+      "endpoints.tf:4",
+      "endpoints.tf:28"
+     ],
+     "status": "priced",
+     "usd": "0.0053",
+     "sku": "K4QBYWVDC6VAS9E8",
+     "usagetype": "APN2-VpcEndpoint-Bytes",
+     "rate": "tiered 0.01 from 0, 0.006 from 1048576, 0.004 from 5242880 GB"
+    },
+    {
+     "id": "dns_firewall_queries",
+     "what": "DNS queries inspected by DNS Firewall",
+     "quantity": 6000,
+     "unit": "Queries",
+     "price": "dns_firewall_query",
+     "cites": [
+      "dns.tf:45",
+      "dns.tf:48"
+     ],
+     "status": "priced",
+     "usd": "0.0036",
+     "sku": "GB3W96WP9REQ9BSD",
+     "usagetype": "APN2-DNS-FirewallQueries",
+     "rate": "tiered 0.0000006 from 0, 0.0000004 from 1000000000 Queries"
+    },
+    {
+     "id": "aurora_storage",
+     "what": "Aurora Standard storage consumed",
+     "quantity": 1,
+     "unit": "GB-Mo",
+     "price": "aurora_storage_gb_month",
+     "cites": [
+      "database.tf:48",
+      "database.tf:64"
+     ],
+     "status": "priced",
+     "usd": "0.1200",
+     "sku": "AG84CY66WDB8RGGA",
+     "usagetype": "APN2-Aurora:StorageUsage",
+     "rate": "0.12/GB-Mo"
+    },
+    {
+     "id": "aurora_io",
+     "what": "Aurora Standard I/O requests",
+     "quantity": 1000000,
+     "unit": "IOs",
+     "price": "aurora_io_request",
+     "cites": [
+      "database.tf:48"
+     ],
+     "status": "priced",
+     "usd": "0.2400",
+     "sku": "MQDQ9YGYC8RGEVZB",
+     "usagetype": "APN2-Aurora:StorageIOUsage",
+     "rate": "0.00000024/IOs"
+    },
+    {
+     "id": "aurora_backup",
+     "what": "Aurora backup storage beyond the free allocation",
+     "quantity": 0,
+     "unit": "GB-Mo",
+     "price": "aurora_backup_gb_month",
+     "cites": [
+      "database.tf:67"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "PDQQMMMK7KEY57DK",
+     "usagetype": "APN2-Aurora:BackupUsage",
+     "rate": "0.023/GB-Mo"
+    },
+    {
+     "id": "aurora_acu_above_minimum",
+     "what": "Aurora capacity above the minimum, both instances",
+     "quantity": 0,
+     "unit": "ACU-Hr",
+     "price": "aurora_acu_hour",
+     "cites": [
+      "database.tf:77",
+      "variables.tf:59",
+      "database.tf:85"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "X6RXUNFS2M5FWJEG",
+     "usagetype": "APN2-Aurora:ServerlessV2Usage",
+     "rate": "0.2/ACU-Hr"
+    },
+    {
+     "id": "kms_requests",
+     "what": "KMS requests, alarm publishes to the encrypted topic included",
+     "quantity": 10020,
+     "unit": "Requests",
+     "price": "kms_request",
+     "cites": [
+      "main.tf:45",
+      "alarms.tf:9",
+      "main.tf:99"
+     ],
+     "status": "priced",
+     "usd": "0.0301",
+     "sku": "A3247YR2SJRYKDEX",
+     "usagetype": "ap-northeast-2-KMS-Requests",
+     "rate": "0.000003/Requests"
+    },
+    {
+     "id": "secrets_api_requests",
+     "what": "Secrets Manager API requests (rotation of the master secret)",
+     "quantity": 50,
+     "unit": "API Requests",
+     "price": "secrets_api_request",
+     "cites": [
+      "database.tf:56"
+     ],
+     "status": "priced",
+     "usd": "0.0003",
+     "sku": "9779GVGYGTKZ2UJA",
+     "usagetype": "APN2-AWSSecretsManagerAPIRequest",
+     "rate": "0.000005/API Requests"
+    },
+    {
+     "id": "sns_publishes",
+     "what": "Alarm and recovery notifications published to the topic",
+     "quantity": 10,
+     "unit": "Requests",
+     "price": "sns_request",
+     "cites": [
+      "alarms.tf:63",
+      "alarms.tf:64"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "WRZT99W8W7KV8S4U",
+     "usagetype": "APN2-Requests-Tier1",
+     "rate": "tiered 0 from 0, 0.0000005 from 1000000 Requests"
+    },
+    {
+     "id": "sns_email_deliveries",
+     "what": "Email deliveries, one per notification per subscribed address",
+     "quantity": 20,
+     "unit": "Notifications",
+     "price": "sns_email_notification",
+     "cites": [
+      "alarms.tf:41",
+      "alarms.tf:44",
+      "variables.tf:81"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "HZRTA3DAEB5KFQJF",
+     "usagetype": "APN2-DeliveryAttempts-SMTP",
+     "rate": "tiered 0 from 0, 0.00002 from 1000 Notifications"
+    },
+    {
+     "id": "bedrock_input_tokens",
+     "what": "Bedrock input tokens, chat model",
+     "quantity": 98304000,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40",
+      "endpoints.tf:20"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "No model is chosen: model_ids has no default. The Price List names Seoul models by display name and usage type, with no attribute holding the Bedrock model ID that model_ids takes (see offers_checked_without_prices in the snapshot), and it does not say which models Seoul serves in-Region without a cross-Region inference profile, which the endpoint policy does not allow.",
+     "formula": "input_tokens / 1,000,000 x (USD per 1M input tokens of the chosen model)"
+    },
+    {
+     "id": "bedrock_output_tokens",
+     "what": "Bedrock output tokens, chat model",
+     "quantity": 12288000,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40",
+      "endpoints.tf:20"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "As for input tokens: no model is chosen and the Price List does not map to model IDs.",
+     "formula": "output_tokens / 1,000,000 x (USD per 1M output tokens of the chosen model)"
+    },
+    {
+     "id": "bedrock_embedding_tokens",
+     "what": "Bedrock input tokens, embedding model",
+     "quantity": 78000,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "As for input tokens; which embedding models Seoul offers was not checked (infra/aws/README.md, Limits).",
+     "formula": "embedding_tokens / 1,000,000 x (USD per 1M input tokens of the chosen embedding model)"
+    }
+   ],
+   "total_usd": "0.4344",
+   "not_priced": [
+    "bedrock_input_tokens",
+    "bedrock_output_tokens",
+    "bedrock_embedding_tokens"
+   ],
+   "about": "About ten people, each starting about ten agent runs a working day for 20 days; the database stays at its minimum.",
+   "with_fixed_usd": "186.4969",
+   "amounts": {
+    "model_calls": 12000,
+    "embedding_calls": 2000,
+    "log_gb.flow": 0.009313225746154785,
+    "log_gb.agent": 0.0037364661693573,
+    "log_gb.invocations": 0.0130385160446167,
+    "log_gb.dns": 0.0027939677238464355,
+    "log_gb.postgresql": 0.0011175870895385742,
+    "endpoint_gb": 0.5252771079540253,
+    "dns_queries": 6000,
+    "aurora_storage_gb": 1,
+    "aurora_io_requests": 1000000,
+    "aurora_backup_billed_gb": 0,
+    "aurora_acu_hours_above_minimum": 0,
+    "kms_requests": 10020,
+    "secrets_api_requests": 50,
+    "sns_publishes": 10,
+    "sns_email_deliveries": 20,
+    "input_tokens": 98304000,
+    "output_tokens": 12288000,
+    "embedding_tokens": 78000,
+    "log_storage_gb_month": 0.394517428254428
+   }
+  },
+  "busy": {
+   "lines": [
+    {
+     "id": "log_ingest_flow",
+     "what": "VPC flow logs ingested (vended logs)",
+     "quantity": 0.09313225746154785,
+     "unit": "GB",
+     "price": "logs_ingest_vended",
+     "cites": [
+      "network.tf:107",
+      "network.tf:109",
+      "main.tf:25"
+     ],
+     "status": "priced",
+     "usd": "0.0708",
+     "sku": "4RVDG642Y3ZTESVR",
+     "usagetype": "APN2-VendedLog-Bytes",
+     "rate": "tiered 0.76 from 0, 0.38 from 10240, 0.152 from 30720, 0.076 from 51200 GB"
+    },
+    {
+     "id": "log_ingest_agent",
+     "what": "Agent audit log ingested",
+     "quantity": 0.037364661693573,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "main.tf:26",
+      "iam.tf:45"
+     ],
+     "status": "priced",
+     "usd": "0.0284",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_ingest_invocations",
+     "what": "Bedrock invocation log ingested, every body delivery off",
+     "quantity": 0.130385160446167,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "logging.tf:40",
+      "main.tf:27"
+     ],
+     "status": "priced",
+     "usd": "0.0991",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_ingest_dns",
+     "what": "Resolver query log ingested (vended logs)",
+     "quantity": 0.027939677238464355,
+     "unit": "GB",
+     "price": "logs_ingest_vended",
+     "cites": [
+      "dns.tf:62",
+      "dns.tf:64",
+      "main.tf:28"
+     ],
+     "status": "priced",
+     "usd": "0.0212",
+     "sku": "4RVDG642Y3ZTESVR",
+     "usagetype": "APN2-VendedLog-Bytes",
+     "rate": "tiered 0.76 from 0, 0.38 from 10240, 0.152 from 30720, 0.076 from 51200 GB"
+    },
+    {
+     "id": "log_ingest_postgresql",
+     "what": "Aurora PostgreSQL log exported (connections, disconnections, pgAudit DDL and role changes)",
+     "quantity": 0.011175870895385742,
+     "unit": "GB",
+     "price": "logs_ingest_standard",
+     "cites": [
+      "database.tf:72",
+      "database.tf:21",
+      "database.tf:26",
+      "main.tf:29"
+     ],
+     "status": "priced",
+     "usd": "0.0085",
+     "sku": "5P9Q77R2ADUJCNJ2",
+     "usagetype": "APN2-DataProcessing-Bytes",
+     "rate": "0.76/GB"
+    },
+    {
+     "id": "log_storage",
+     "what": "Log storage of the five groups once 400 days have filled",
+     "quantity": 3.9451742825442797,
+     "unit": "GB-Mo",
+     "price": "logs_storage",
+     "cites": [
+      "main.tf:94",
+      "main.tf:95",
+      "main.tf:98"
+     ],
+     "status": "priced",
+     "usd": "0.1239",
+     "sku": "E7V5NF3GN7MQKCB6",
+     "usagetype": "APN2-TimedStorage-ByteHrs",
+     "rate": "0.0314/GB-Mo"
+    },
+    {
+     "id": "endpoint_data_processed",
+     "what": "Data processed by the two interface endpoints",
+     "quantity": 5.252771079540253,
+     "unit": "GB",
+     "price": "vpc_endpoint_gb",
+     "cites": [
+      "endpoints.tf:4",
+      "endpoints.tf:28"
+     ],
+     "status": "priced",
+     "usd": "0.0525",
+     "sku": "K4QBYWVDC6VAS9E8",
+     "usagetype": "APN2-VpcEndpoint-Bytes",
+     "rate": "tiered 0.01 from 0, 0.006 from 1048576, 0.004 from 5242880 GB"
+    },
+    {
+     "id": "dns_firewall_queries",
+     "what": "DNS queries inspected by DNS Firewall",
+     "quantity": 60000,
+     "unit": "Queries",
+     "price": "dns_firewall_query",
+     "cites": [
+      "dns.tf:45",
+      "dns.tf:48"
+     ],
+     "status": "priced",
+     "usd": "0.0360",
+     "sku": "GB3W96WP9REQ9BSD",
+     "usagetype": "APN2-DNS-FirewallQueries",
+     "rate": "tiered 0.0000006 from 0, 0.0000004 from 1000000000 Queries"
+    },
+    {
+     "id": "aurora_storage",
+     "what": "Aurora Standard storage consumed",
+     "quantity": 1,
+     "unit": "GB-Mo",
+     "price": "aurora_storage_gb_month",
+     "cites": [
+      "database.tf:48",
+      "database.tf:64"
+     ],
+     "status": "priced",
+     "usd": "0.1200",
+     "sku": "AG84CY66WDB8RGGA",
+     "usagetype": "APN2-Aurora:StorageUsage",
+     "rate": "0.12/GB-Mo"
+    },
+    {
+     "id": "aurora_io",
+     "what": "Aurora Standard I/O requests",
+     "quantity": 10000000,
+     "unit": "IOs",
+     "price": "aurora_io_request",
+     "cites": [
+      "database.tf:48"
+     ],
+     "status": "priced",
+     "usd": "2.4000",
+     "sku": "MQDQ9YGYC8RGEVZB",
+     "usagetype": "APN2-Aurora:StorageIOUsage",
+     "rate": "0.00000024/IOs"
+    },
+    {
+     "id": "aurora_backup",
+     "what": "Aurora backup storage beyond the free allocation",
+     "quantity": 0,
+     "unit": "GB-Mo",
+     "price": "aurora_backup_gb_month",
+     "cites": [
+      "database.tf:67"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "PDQQMMMK7KEY57DK",
+     "usagetype": "APN2-Aurora:BackupUsage",
+     "rate": "0.023/GB-Mo"
+    },
+    {
+     "id": "aurora_acu_above_minimum",
+     "what": "Aurora capacity above the minimum, both instances",
+     "quantity": 730,
+     "unit": "ACU-Hr",
+     "price": "aurora_acu_hour",
+     "cites": [
+      "database.tf:77",
+      "variables.tf:59",
+      "database.tf:85"
+     ],
+     "status": "priced",
+     "usd": "146.0000",
+     "sku": "X6RXUNFS2M5FWJEG",
+     "usagetype": "APN2-Aurora:ServerlessV2Usage",
+     "rate": "0.2/ACU-Hr"
+    },
+    {
+     "id": "kms_requests",
+     "what": "KMS requests, alarm publishes to the encrypted topic included",
+     "quantity": 100080,
+     "unit": "Requests",
+     "price": "kms_request",
+     "cites": [
+      "main.tf:45",
+      "alarms.tf:9",
+      "main.tf:99"
+     ],
+     "status": "priced",
+     "usd": "0.3002",
+     "sku": "A3247YR2SJRYKDEX",
+     "usagetype": "ap-northeast-2-KMS-Requests",
+     "rate": "0.000003/Requests"
+    },
+    {
+     "id": "secrets_api_requests",
+     "what": "Secrets Manager API requests (rotation of the master secret)",
+     "quantity": 50,
+     "unit": "API Requests",
+     "price": "secrets_api_request",
+     "cites": [
+      "database.tf:56"
+     ],
+     "status": "priced",
+     "usd": "0.0003",
+     "sku": "9779GVGYGTKZ2UJA",
+     "usagetype": "APN2-AWSSecretsManagerAPIRequest",
+     "rate": "0.000005/API Requests"
+    },
+    {
+     "id": "sns_publishes",
+     "what": "Alarm and recovery notifications published to the topic",
+     "quantity": 40,
+     "unit": "Requests",
+     "price": "sns_request",
+     "cites": [
+      "alarms.tf:63",
+      "alarms.tf:64"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "WRZT99W8W7KV8S4U",
+     "usagetype": "APN2-Requests-Tier1",
+     "rate": "tiered 0 from 0, 0.0000005 from 1000000 Requests"
+    },
+    {
+     "id": "sns_email_deliveries",
+     "what": "Email deliveries, one per notification per subscribed address",
+     "quantity": 80,
+     "unit": "Notifications",
+     "price": "sns_email_notification",
+     "cites": [
+      "alarms.tf:41",
+      "alarms.tf:44",
+      "variables.tf:81"
+     ],
+     "status": "priced",
+     "usd": "0.0000",
+     "sku": "HZRTA3DAEB5KFQJF",
+     "usagetype": "APN2-DeliveryAttempts-SMTP",
+     "rate": "tiered 0 from 0, 0.00002 from 1000 Notifications"
+    },
+    {
+     "id": "bedrock_input_tokens",
+     "what": "Bedrock input tokens, chat model",
+     "quantity": 983040000,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40",
+      "endpoints.tf:20"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "No model is chosen: model_ids has no default. The Price List names Seoul models by display name and usage type, with no attribute holding the Bedrock model ID that model_ids takes (see offers_checked_without_prices in the snapshot), and it does not say which models Seoul serves in-Region without a cross-Region inference profile, which the endpoint policy does not allow.",
+     "formula": "input_tokens / 1,000,000 x (USD per 1M input tokens of the chosen model)"
+    },
+    {
+     "id": "bedrock_output_tokens",
+     "what": "Bedrock output tokens, chat model",
+     "quantity": 122880000,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40",
+      "endpoints.tf:20"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "As for input tokens: no model is chosen and the Price List does not map to model IDs.",
+     "formula": "output_tokens / 1,000,000 x (USD per 1M output tokens of the chosen model)"
+    },
+    {
+     "id": "bedrock_embedding_tokens",
+     "what": "Bedrock input tokens, embedding model",
+     "quantity": 780000,
+     "unit": "tokens",
+     "price": null,
+     "cites": [
+      "variables.tf:40"
+     ],
+     "status": "not priced",
+     "usd": null,
+     "reason": "As for input tokens; which embedding models Seoul offers was not checked (infra/aws/README.md, Limits).",
+     "formula": "embedding_tokens / 1,000,000 x (USD per 1M input tokens of the chosen embedding model)"
+    }
+   ],
+   "total_usd": "149.2609",
+   "not_priced": [
+    "bedrock_input_tokens",
+    "bedrock_output_tokens",
+    "bedrock_embedding_tokens"
+   ],
+   "about": "Ten times the pilot's runs, with each database instance averaging twice its minimum.",
+   "with_fixed_usd": "335.3234",
+   "amounts": {
+    "model_calls": 120000,
+    "embedding_calls": 20000,
+    "log_gb.flow": 0.09313225746154785,
+    "log_gb.agent": 0.037364661693573,
+    "log_gb.invocations": 0.130385160446167,
+    "log_gb.dns": 0.027939677238464355,
+    "log_gb.postgresql": 0.011175870895385742,
+    "endpoint_gb": 5.252771079540253,
+    "dns_queries": 60000,
+    "aurora_storage_gb": 1,
+    "aurora_io_requests": 10000000,
+    "aurora_backup_billed_gb": 0,
+    "aurora_acu_hours_above_minimum": 730,
+    "kms_requests": 100080,
+    "secrets_api_requests": 50,
+    "sns_publishes": 40,
+    "sns_email_deliveries": 80,
+    "input_tokens": 983040000,
+    "output_tokens": 122880000,
+    "embedding_tokens": 780000,
+    "log_storage_gb_month": 3.9451742825442797
+   }
+  }
+ },
+ "free_tiers_not_subtracted": [
+  {
+   "price": "free_alarms",
+   "sku": "FCH8WPMWVXA4B6VM",
+   "usagetype": "Global-CW:AlarmMonitorUsage",
+   "allowance": "10",
+   "unit": "Alarms"
+  },
+  {
+   "price": "free_log_ingest",
+   "sku": "SSNSJENVU973ECHE",
+   "usagetype": "Global-DataProcessing-Bytes",
+   "allowance": "5",
+   "unit": "GB"
+  },
+  {
+   "price": "free_log_storage",
+   "sku": "6XTVPDAM3VF25UTA",
+   "usagetype": "Global-TimedStorage-ByteHrs",
+   "allowance": "5",
+   "unit": "GB-Mo"
+  },
+  {
+   "price": "free_kms_requests",
+   "sku": "VTFSAGP364M6QE4A",
+   "usagetype": "Global-KMS-Requests",
+   "allowance": "20000",
+   "unit": "Requests"
+  }
+ ],
+ "not_in_design": [
+  "Compute for the agent (ECS tasks on Fargate or EC2): the Terraform has no cluster or task definition (infra/aws/README.md, Limits), so none is priced.",
+  "The ECR interface endpoints and S3 gateway endpoint that running tasks would need: not created, not priced. Two more interface endpoints would add 2 x 2 x 730 endpoint-hours.",
+  "Data transfer between Availability Zones: it depends on where the tasks run, which the design leaves open."
+ ]
+}

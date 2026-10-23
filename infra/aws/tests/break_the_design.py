@@ -86,7 +86,7 @@ ENDPOINT_EXTRA_STATEMENT = """      Resource  = local.model_arns
 # (case, file, text that must occur exactly once, its replacement, the test run that must fail)
 CASES = [
     ("database_made_public", "database.tf",
-     "publicly_accessible                   = false", "publicly_accessible                   = true", PUBLIC),
+     "publicly_accessible          = false", "publicly_accessible          = true", PUBLIC),
     ("database_unencrypted", "database.tf", "storage_encrypted = true", "storage_encrypted = false", PUBLIC),
     ("tls_not_required", "database.tf",
      'name  = "rds.force_ssl"\n    value = "1"', 'name  = "rds.force_ssl"\n    value = "0"', PUBLIC),
@@ -144,6 +144,8 @@ CASES = [
     ("empty_model_list_accepted", "variables.tf", "length(var.model_ids) > 0 && ", "", EMPTY_MODELS),
     ("oversized_vpc_accepted", "variables.tf",
      'split("/", var.vpc_cidr)[1] == "16"', 'tonumber(split("/", var.vpc_cidr)[1]) <= 16', LARGE_VPC),
+    ("performance_insights_turned_on", "database.tf",
+     "performance_insights_enabled = false", "performance_insights_enabled = true", PUBLIC),
     ("alarm_topic_unencrypted", "alarms.tf", "  kms_master_key_id = aws_kms_key.lab.arn\n", "", ALARMS),
     ("alarm_topic_open_to_other_accounts", "alarms.tf",
      '          StringEquals = { "aws:SourceAccount" = local.account_id }\n', "", ALARMS),

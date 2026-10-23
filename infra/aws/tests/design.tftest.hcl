@@ -210,8 +210,8 @@ run "nothing_is_public_and_everything_is_encrypted" {
   }
 
   assert {
-    condition     = alltrue([for i in aws_rds_cluster_instance.lab : i.publicly_accessible == false && i.performance_insights_enabled && i.performance_insights_kms_key_id == var.lab_key])
-    error_message = "No database instance may be public, and Performance Insights must be on and use the lab key."
+    condition     = alltrue([for i in aws_rds_cluster_instance.lab : i.publicly_accessible == false && i.performance_insights_enabled == false])
+    error_message = "No database instance may be public, and Performance Insights stays off: with it on, AWS recommends a 2 ACU minimum, four times the database's fixed cost."
   }
 
   assert {

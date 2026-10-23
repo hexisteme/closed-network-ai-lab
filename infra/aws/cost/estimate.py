@@ -418,7 +418,6 @@ def check_design(terraform: Terraform, quantities: dict) -> list:
     expect("aurora_minimum_acu_hours", fixed["aurora_minimum_acu_hours"]["quantity"], db * minimum * hours)
     expect("kms_key", fixed["kms_key"]["quantity"],
            sum(b["instances"] for b in count_resource(None, "aws_kms_key", terraform)))
-    expect("performance_insights", fixed["performance_insights"]["quantity"], db)
     domains = sum(
         len(terraform.elements(*top_level(b)[0]["domains"]))
         for b in terraform.blocks if b["type"] == "aws_route53_resolver_firewall_domain_list"

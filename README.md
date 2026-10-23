@@ -36,13 +36,13 @@ the owner's decisions and how the case could be wrong are in
 | A10: with qwen3:4b proposing the calls, the boundary holds whatever it proposes | `review-agent`, `tests/test_review_agent.py` | [no prompt defense](evidence/review-agent-20261022T063744Z-b34ff4.json): 9 calls refused, job not done · [one defense sentence](evidence/review-agent-20261022T063848Z-a73fbe.json): job done with one approval |
 | A11: retrieval over public law text stays inside the network and its quality is measured | `rag-eval`, `tests/test_rag.py` | [recall@5 0.958 over 24 questions](evidence/rag-eval-20261022T081909Z-06dbc0.json) |
 | A12: a LangGraph agent keeps the same boundary and pauses for approval before writing | `rag-agent`, `tests/test_rag_agent.py` | [one pause, one approval, every cited article retrieved](evidence/rag-agent-20261022T082220Z-30c48f.json) |
-| A13: the same layout on AWS is code whose claims are offline assertions | `infra/aws/check.sh`, `infra/aws/tests/break_the_design.py` | 10 of 10 test runs pass, [no trivy HIGH or CRITICAL finding](evidence/iac-check-20261022T175349Z.json), 49 of 49 deliberate breaks caught |
+| A13: the same layout on AWS is code whose claims are offline assertions | `infra/aws/check.sh`, `infra/aws/tests/break_the_design.py` | 10 of 10 test runs pass, [no trivy HIGH or CRITICAL finding](evidence/iac-check-20261023T001248Z.json), 50 of 50 deliberate breaks caught |
 | A15: model calls over the gateway's limit are refused at once and audited, instead of waiting behind the model | `gateway-load`, `tests/test_model_gateway.py` | [limit 8: one call at a time, the wait grows with concurrency](evidence/gateway-load-20261022T172209Z.json) · [limit 2: 14 of 16 calls shed at 4 and 8 at once, admitted p95 4.6 s or less](evidence/gateway-load-20261022T172414Z.json) |
 | A14: the gateway serves one versioned release of its model allowlist, and a bad release can be rolled back | `gateway/release_rehearsal.py`, `tests/test_release.py` | [r1 passes 7 checks, r2 fails the embedding check, rollback to r1 passes all 7 again; every gateway request is audited under the release served](evidence/release-rehearsal-20261022T163224Z-542a32.json) |
 
 Approvals in the A10 and A12 runs were piped by the operator; a run approved at a terminal is still
 to be done. Results without an evidence file in this repository are the author's report of runs on
-2026-10-22 and 2026-10-23: the 238 tests on Linux (10-23), the ten Terraform runs and the 49 breaks, the tool versions in
+2026-10-22 and 2026-10-23: the 238 tests on Linux (10-23), the ten Terraform runs and the 50 breaks, the tool versions in
 the network check, and the tool-calling comparison under the review agent.
 
 ## Run
@@ -400,10 +400,10 @@ a `bedrock-runtime` interface endpoint whose policy is the model allowlist,
 Aurora PostgreSQL with pgvector, invocation logs without bodies, and seven alarms on one encrypted
 topic. `terraform test` runs ten assertion runs against a mock provider, so nothing is created and
 no credentials are needed. `infra/aws/tests/break_the_design.py` breaks a fresh copy of the design
-49 ways, one at a time, and on 2026-10-23 the tests caught all 49. trivy's HIGH and CRITICAL checks
-caught 5 of them; the other 44 break rules only this design defines, such as which models the
+50 ways, one at a time, and on 2026-10-23 the tests caught all 50. trivy's HIGH and CRITICAL checks
+caught 5 of them; the other 45 break rules only this design defines, such as which models the
 endpoint allows. At list prices the design would cost [186.06 USD a month before any
-use](evidence/cost-estimate-20261022T175328Z.json), almost all of it the database's minimum
+use](evidence/cost-estimate-20261023T001845Z.json), almost all of it the database's minimum
 capacity and the interface endpoints; model tokens are not priced, and the infra README says why
 that figure is a floor. The design was
 reviewed against the Well-Architected security pillar and changed in `b8e66a7`. Its limits, from
@@ -439,8 +439,8 @@ Status words:
 | GENOPS02-BP03 Mitigate system overload | Tested | The gateway forwards at most two model calls at once and refuses the rest at once with 503 and `Retry-After` (`OverloadTest`, A15). The limit is per gateway, not per client, and the agents stop on a 503 instead of retrying |
 | GENOPS03-BP01 Prompt template management | Not addressed | Prompts live in the code, versioned by git only |
 | GENOPS03-BP02 Tracing for agents and RAG workflows | Tested, tool events only · Not addressed | Each approval, decision and execution shares an `approval_id` or `call_id`, and `audit_check.py` reconciles them (A4, A8, A9). Model calls, retrieval and generation are not traced with a shared id |
-| GENOPS04-BP01 Infrastructure as code | IaC only | `infra/aws`, 10 assertion runs and 49 breaks. The local lab is `compose.yaml` |
-| GENOPS04-BP02 GenAIOps lifecycle | Implemented, in part | `.github/workflows/ci.yml` runs the whole test suite in the lab image and the AWS checks with all 49 breaks on every push and pull request. Anything that needs a model (`egress-check`, the agents, `rag-eval`, `gateway-load`) still runs by hand: CI has no models |
+| GENOPS04-BP01 Infrastructure as code | IaC only | `infra/aws`, 10 assertion runs and 50 breaks. The local lab is `compose.yaml` |
+| GENOPS04-BP02 GenAIOps lifecycle | Implemented, in part | `.github/workflows/ci.yml` runs the whole test suite in the lab image and the AWS checks with all 50 breaks on every push and pull request. Anything that needs a model (`egress-check`, the agents, `rag-eval`, `gateway-load`) still runs by hand: CI has no models |
 | GENOPS05-BP01 Learn when to customize models | Not addressed | Off-the-shelf models only; no written decision on customizing |
 
 ### Reliability ([lens](https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/reliability.html))
@@ -476,7 +476,7 @@ Status words:
 | Best practice | Status | Evidence or gap |
 |---|---|---|
 | GENCOST01-BP01 Right-size model selection | Not addressed | Local calls cost nothing; no AWS model is chosen (`model_ids` has no default) |
-| GENCOST02-BP01, BP02 Inference paradigm and hosting cost | Tested, in part | `infra/aws/cost/estimate.py` prices the design from the public Price List: [186.06 USD a month fixed, 335.32 in the busy scenario](evidence/cost-estimate-20261022T175328Z.json), Bedrock tokens left as a formula because no model is chosen. Its arithmetic and its citations of the Terraform are tested (`tests/test_cost_estimate.py`, `estimate.py verify`). No alternative paradigm or hosting option was compared, and no bill checks the figures |
+| GENCOST02-BP01, BP02 Inference paradigm and hosting cost | Tested, in part | `infra/aws/cost/estimate.py` prices the design from the public Price List: [186.06 USD a month fixed, 335.32 in the busy scenario](evidence/cost-estimate-20261023T001845Z.json), Bedrock tokens left as a formula because no model is chosen. Its arithmetic and its citations of the Terraform are tested (`tests/test_cost_estimate.py`, `estimate.py verify`). No alternative paradigm or hosting option was compared, and no bill checks the figures |
 | GENCOST03-BP01, BP02 Prompt and response length | Tested, in part | Response caps (`num_predict` 512 and 1,024, `num_ctx` 8,192 for RAG answers) and the memo's limit of ten nonblank lines (`test_rag_agent.py`); prompt length is not measured |
 | GENCOST03-BP03 Prompt caching | Not addressed | |
 | GENCOST03-BP04 Annotate user input for cost-aware filtering | Not addressed | |
